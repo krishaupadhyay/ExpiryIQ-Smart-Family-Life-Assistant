@@ -177,7 +177,7 @@ mysql -u root -p < database/schema.sql
 
 | Name | Role |
 
-| Prachi Rana | Fronted /AI-ML dev |
+| Prachi Rana | Frontend /AI-ML dev |
 | Krisha Upadhyay | Backend Dev|
 ---
 
