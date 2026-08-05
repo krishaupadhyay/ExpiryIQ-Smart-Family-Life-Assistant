@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExpiryIQ — Smart Family Life Assistant</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<!-- TOAST -->
+<div id="toast" class="toast fixed top-6 right-6 z-50 opacity-0 pointer-events-none -translate-y-2">
+  <div class="bg-gray-900 text-white px-5 py-3 rounded-lg shadow-lg text-sm font-medium" id="toastMsg">Done</div>
+</div>
+
+<!-- NAVBAR -->
+<nav class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-9 h-9 rounded-xl grad-btn flex items-center justify-center text-white font-bold">Q</div>
+      <span class="font-bold text-lg">ExpiryIQ</span>
+    </a>
+    <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+      <a href="#features" class="hover:text-indigo-600">Features</a>
+      <a href="#how" class="hover:text-indigo-600">How It Works</a>
+    </div>
+    <div class="flex items-center gap-3" id="navButtons">
+      <a href="login.html" class="text-sm font-semibold text-gray-700 hover:text-indigo-600 px-4 py-2">Sign In</a>
+      <a href="register.html" class="grad-btn text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-sm">Get Started</a>
+    </div>
+    <div class="hidden items-center gap-4" id="navUser">
+      <span class="text-sm text-gray-600">Hi, <span id="navUserName" class="font-semibold text-gray-900"></span></span>
+      <a href="dashboard.html" class="text-sm font-semibold text-indigo-600 px-3 py-2">Dashboard</a>
+      <button onclick="logoutUser()" class="text-sm font-semibold text-gray-500 hover:text-red-500 px-3 py-2">Log Out</button>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="grad-hero px-6 py-20">
+  <div class="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+    <div>
+      <span class="inline-block bg-white text-indigo-600 text-xs font-semibold px-4 py-2 rounded-full border border-indigo-100 mb-6">✦ AI-Powered Family Life Management</span>
+      <h1 class="text-5xl font-extrabold leading-tight mb-6">Smart Family Life <span class="grad-text">Starts Here</span></h1>
+      <p class="text-gray-600 text-lg mb-8 leading-relaxed">ExpiryIQ helps your family manage medicines, groceries, documents, insurance, bills, appliances, and daily tasks — all from one intelligent platform built for every generation.</p>
+      <div class="flex gap-4">
+        <a href="register.html" class="grad-btn text-white font-semibold px-7 py-3.5 rounded-xl shadow-md">Get Started →</a>
+        <button onclick="toast('Demo coming soon!')" class="bg-white border border-gray-200 font-semibold px-7 py-3.5 rounded-xl">Watch Demo</button>
+      </div>
+    </div>
+    <div class="bg-white rounded-2xl shadow-2xl p-6 border border-gray-100">
+      <div class="flex gap-1.5 mb-4">
+        <span class="w-3 h-3 rounded-full bg-red-400"></span><span class="w-3 h-3 rounded-full bg-yellow-400"></span><span class="w-3 h-3 rounded-full bg-green-400"></span>
+      </div>
+      <p class="font-semibold">Good Morning, Prachi! 👋</p>
+      <p class="text-xs text-gray-400 mb-4">Friday, 24 July 2026</p>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-rose-50 rounded-xl p-4"><p class="font-semibold text-sm">3 Medicines</p><p class="text-xs text-gray-500">Expiring soon</p></div>
+        <div class="bg-amber-50 rounded-xl p-4"><p class="font-semibold text-sm">2 Documents</p><p class="text-xs text-gray-500">Need renewal</p></div>
+        <div class="bg-violet-50 rounded-xl p-4"><p class="font-semibold text-sm">1 Policy</p><p class="text-xs text-gray-500">Due in 7 days</p></div>
+        <div class="bg-cyan-50 rounded-xl p-4"><p class="font-semibold text-sm">₹2,450</p><p class="text-xs text-gray-500">Bills pending</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="px-6 py-20 max-w-6xl mx-auto">
+  <p class="text-center text-indigo-600 font-semibold text-sm mb-2">EVERYTHING YOUR FAMILY NEEDS</p>
+  <h2 class="text-3xl font-extrabold text-center mb-3">10 Powerful Modules, One Platform</h2>
+  <p class="text-center text-gray-500 mb-12 max-w-xl mx-auto">From medicines to documents, bills to festivals — ExpiryIQ covers every aspect of Indian family life.</p>
+  <div class="grid md:grid-cols-4 gap-5" id="moduleGrid"></div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" class="px-6 py-20 bg-gray-50">
+  <div class="max-w-5xl mx-auto text-center">
+    <p class="text-emerald-600 font-semibold text-sm mb-2">SIMPLE & INTUITIVE</p>
+    <h2 class="text-3xl font-extrabold mb-14">Get Started in 3 Easy Steps</h2>
+    <div class="grid md:grid-cols-3 gap-10 text-left">
+      <div><div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center font-bold text-indigo-600 mb-4">1</div><p class="font-bold mb-2">Create Family Profile</p><p class="text-sm text-gray-500">Add family members, set roles and preferences.</p></div>
+      <div><div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center font-bold text-emerald-600 mb-4">2</div><p class="font-bold mb-2">Add Your Data</p><p class="text-sm text-gray-500">Upload medicines, documents, bills and policies.</p></div>
+      <div><div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center font-bold text-amber-600 mb-4">3</div><p class="font-bold mb-2">Let AI Work For You</p><p class="text-sm text-gray-500">Get proactive alerts and smart reminders.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="px-6 py-16 grad-btn text-center">
+  <h2 class="text-3xl font-extrabold text-white mb-4">Start Your Family's Smart Journey Today</h2>
+  <a href="register.html" class="inline-block bg-white text-indigo-600 font-semibold px-7 py-3.5 rounded-xl mt-2">Get Started Now →</a>
+</section>
+
+<footer class="px-6 py-10 bg-gray-900 text-gray-400 text-sm text-center">© 2026 ExpiryIQ — Built for Indian families.</footer>
+
+<script src="js/toast.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/navbar.js"></script>
+<script src="js/modules-data.js"></script>
+<script>
+  renderModules('moduleGrid', false);
+</script>
+</body>
+</html>

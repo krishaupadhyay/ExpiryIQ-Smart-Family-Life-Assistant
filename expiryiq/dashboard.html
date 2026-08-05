@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — ExpiryIQ</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<!-- TOAST -->
+<div id="toast" class="toast fixed top-6 right-6 z-50 opacity-0 pointer-events-none -translate-y-2">
+  <div class="bg-gray-900 text-white px-5 py-3 rounded-lg shadow-lg text-sm font-medium" id="toastMsg">Done</div>
+</div>
+
+<!-- NAVBAR -->
+<nav class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100">
+  <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2">
+      <div class="w-9 h-9 rounded-xl grad-btn flex items-center justify-center text-white font-bold">Q</div>
+      <span class="font-bold text-lg">ExpiryIQ</span>
+    </a>
+    <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+      <a href="index.html#features" class="hover:text-indigo-600">Features</a>
+      <a href="index.html#how" class="hover:text-indigo-600">How It Works</a>
+    </div>
+    <div class="flex items-center gap-3" id="navButtons">
+      <a href="login.html" class="text-sm font-semibold text-gray-700 hover:text-indigo-600 px-4 py-2">Sign In</a>
+      <a href="register.html" class="grad-btn text-white text-sm font-semibold px-5 py-2.5 rounded-lg shadow-sm">Get Started</a>
+    </div>
+    <div class="hidden items-center gap-4" id="navUser">
+      <span class="text-sm text-gray-600">Hi, <span id="navUserName" class="font-semibold text-gray-900"></span></span>
+      <a href="dashboard.html" class="text-sm font-semibold text-indigo-600 px-3 py-2">Dashboard</a>
+      <button onclick="logoutUser()" class="text-sm font-semibold text-gray-500 hover:text-red-500 px-3 py-2">Log Out</button>
+    </div>
+  </div>
+</nav>
+
+<!-- DASHBOARD CONTENT -->
+<div class="max-w-6xl mx-auto px-6 py-10">
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-2xl font-extrabold">Good day, <span id="dashUserName">there</span> 👋</h1>
+      <p class="text-gray-500 text-sm" id="dashDate"></p>
+    </div>
+    <div class="w-11 h-11 rounded-full grad-btn text-white flex items-center justify-center font-bold" id="dashAvatar">P</div>
+  </div>
+
+  <div class="grid md:grid-cols-4 gap-4 mb-10">
+    <div class="bg-rose-50 rounded-xl p-5 card-hover cursor-pointer" onclick="toast('Opening MediTrack…')"><p class="text-2xl font-extrabold">3</p><p class="text-sm text-gray-600">Medicines expiring soon</p></div>
+    <div class="bg-amber-50 rounded-xl p-5 card-hover cursor-pointer" onclick="toast('Opening DocuVault…')"><p class="text-2xl font-extrabold">2</p><p class="text-sm text-gray-600">Documents need renewal</p></div>
+    <div class="bg-violet-50 rounded-xl p-5 card-hover cursor-pointer" onclick="toast('Opening PolicyWatch…')"><p class="text-2xl font-extrabold">1</p><p class="text-sm text-gray-600">Policy due in 7 days</p></div>
+    <div class="bg-cyan-50 rounded-xl p-5 card-hover cursor-pointer" onclick="toast('Opening UtilityDesk…')"><p class="text-2xl font-extrabold">₹2,450</p><p class="text-sm text-gray-600">Bills pending</p></div>
+  </div>
+
+  <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5 flex items-start gap-3 mb-10">
+    <span class="text-xl">✦</span>
+    <div><p class="font-semibold text-sm">AI Insight</p><p class="text-sm text-gray-600">Metformin for Papa expires in 5 days. Tap to reorder from your pharmacy.</p></div>
+  </div>
+
+  <h2 class="font-bold text-lg mb-4">Your Modules</h2>
+  <div class="grid md:grid-cols-4 gap-4" id="dashModuleGrid"></div>
+</div>
+
+<script src="js/toast.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/navbar.js"></script>
+<script src="js/modules-data.js"></script>
+<script>
+  // Protect this page — bounce to login if no session
+  const session = requireAuth();
+
+  if (session) {
+    document.getElementById('dashUserName').textContent = session.name.split(' ')[0];
+    document.getElementById('dashAvatar').textContent = session.name.charAt(0).toUpperCase();
+    document.getElementById('dashDate').textContent = new Date().toLocaleDateString('en-IN', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+  }
+
+  renderModules('dashModuleGrid', true);
+</script>
+</body>
+</html>
