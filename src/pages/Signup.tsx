@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Bot, Mail, Lock, User, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { apiRequest } from '../services/api'
 
 export default function Signup() {
   const [name, setName] = useState('')
@@ -11,42 +12,71 @@ export default function Signup() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError('')
+    setError('');
 
     if (!name || !email || !password || !confirm) {
-      setError('Please fill in all fields.')
-      return
+        setError('Please fill in all fields.');
+        return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.')
-      return
+
+    if (name.trim().length < 2) {
+        setError('Name must be at least 2 characters.');
+        return;
     }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email.trim())) {
+        setError('Please enter a valid email address.');
+        return;
+    }
+
+    const passwordRegex =
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+    if (!passwordRegex.test(password)) {
+        setError(
+            'Password must be at least 8 characters and contain at least one uppercase letter, one lowercase letter and one digit.'
+        );
+        return;
+    }
+
     if (password !== confirm) {
-      setError('Passwords do not match.')
-      return
+        setError('Passwords do not match.');
+        return;
     }
 
-    setLoading(true)
+    setLoading(true);
+
     try {
-      // TODO: replace with a real API call once the backend is connected
-      // const res = await fetch('http://localhost:5000/api/auth/register', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ name, email, password })
-      // })
-      // const data = await res.json()
-      // if (!res.ok) throw new Error(data.message)
+      const data = await apiRequest('/auth/register', {
+  method: 'POST',
 
-      navigate('/dashboard')
+  body: JSON.stringify({
+    name: name.trim(),
+    email: email.trim(),
+    password
+  })
+});
+
+console.log('Registration successful:', data);
+
+// Registration should NOT automatically log the user in.
+navigate('/login', { replace: true });
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+        setError(
+            err instanceof Error
+                ? err.message
+                : 'Something went wrong. Please try again.'
+        );
     } finally {
-      setLoading(false)
+        setLoading(false);
     }
-  }
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ background: '#FFFDF7' }}>
@@ -105,10 +135,10 @@ export default function Signup() {
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                minLength={6}
+                minLength={7}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Minimum 6 characters"
+                placeholder="8+ chars, uppercase, lowercase & digit"
                 className="w-full pl-10 pr-10 py-2.5 rounded-xl text-sm outline-none transition-all"
                 style={{ background: 'rgba(15,26,46,0.03)', border: '1px solid rgba(15,26,46,0.1)', color: '#1C1917' }}
                 onFocus={e => { e.currentTarget.style.border = '1px solid #0D9488'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(13,148,136,0.12)' }}
