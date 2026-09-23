@@ -1,0 +1,235 @@
+ExpiryIQ                                                                        
+│
+├── backend
+│   │
+│   ├── logs/
+│   │
+│   ├── node_modules/
+│   │
+│   ├── src/
+│   │   │
+│   │   ├── config/
+│   │   │   └── db.js
+│   │   │
+│   │   ├── controllers/
+│   │   │   └── auth.controller.js
+│   │   │
+│   │   ├── middleware/
+│   │   │   └── auth.middleware.js
+│   │   │
+│   │   ├── models/
+│   │   │   └── user.model.js
+│   │   │
+│   │   ├── routes/
+│   │   │   └── auth.routes.js
+│   │   │
+│   │   ├── utils/
+│   │   │
+│   │   ├── app.js
+│   │   └── server.js
+│   │
+│   ├── uploads/
+│   │
+│   ├── .env
+│   ├── package-lock.json
+│   └── package.json
+│
+│
+└── frontend1
+    │
+    ├── .figma/
+    │
+    ├── node_modules/
+    │
+    ├── src/
+    │   │
+    │   ├── components/
+    │   │   ├── AppShell.tsx
+    │   │   ├── ProtectedRoute.tsx
+    │   │   └── PublicOnlyRoute.tsx
+    │   │
+    │   ├── context/
+    │   │   └── AuthContext.tsx
+    │   │
+    │   ├── pages/
+    │   │   ├── AIAssistant.tsx
+    │   │   ├── Dashboard.tsx
+    │   │   ├── DocVault.tsx
+    │   │   ├── FamilyPlus.tsx
+    │   │   ├── ForgotPassword.tsx
+    │   │   ├── HomeCare.tsx
+    │   │   ├── Landing.tsx
+    │   │   ├── Login.tsx
+    │   │   ├── Logout.tsx
+    │   │   ├── MediTrack.tsx
+    │   │   ├── PantryIQ.tsx
+    │   │   ├── PolicyWatch.tsx
+    │   │   ├── ProfileSelection.tsx
+    │   │   ├── Signup.tsx
+    │   │   └── UtilityDesk.tsx
+    │   │
+    │   ├── services/
+    │   │   └── api.ts
+    │   │
+    │   ├── App.tsx
+    │   ├── index.css
+    │   ├── main.tsx
+    │   └── vite-env.d.ts
+    │
+    ├── .env
+    ├── .gitignore
+    ├── .mise.toml
+    ├── AGENTS.md
+    ├── CLAUDE.md
+    ├── index.html
+    ├── package-lock.json
+    ├── package.json
+    ├── pnpm-lock.yaml
+    ├── tsconfig.json
+    └── vite.config.ts
+
+
+                    User
+                      │
+                      ▼
+              React Frontend
+                      │
+              HTTP Request (API)
+                      │
+                      ▼
+          Node.js + Express Server
+                      │
+          ┌───────────┴───────────┐
+          │                       │
+          ▼                       ▼
+     Middleware               Routes
+   (CORS, JSON, JWT)      (auth.routes.js)
+                                  │
+                                  ▼
+                         Authentication Controller
+                        (auth.controller.js)
+                                  │
+                                  ▼
+                            User Model
+                         (user.model.js)
+                                  │
+                                  ▼
+                         MySQL Database
+                           (users table)
+                                  │
+                                  ▲
+                           Response Sent
+                                  │
+                                  ▲
+                           React Frontend
+
+
+
+
+                            authentication tokens flow 
+
+
+                                             LOGIN
+                   │
+                   ▼
+        ┌─────────────────────┐
+        │ Backend verifies    │
+        │ email + password    │
+        └──────────┬──────────┘
+                   │
+                   ▼
+          Create JWT token
+                   │
+                   ▼
+       Store JWT in HttpOnly
+             browser cookie
+                   │
+                   ▼
+       Browser automatically
+       sends cookie with API
+             requests
+                   │
+                   ▼
+       auth.middleware.js
+       verifies JWT
+                   │
+                   ▼
+          req.user = userId
+                   │
+                   ▼
+             /auth/me
+                   │
+                   ▼
+       MongoDB → user details
+                   │
+                   ▼
+       React gets name/email
+
+
+
+
+       system arch 
+
+
+
+
+                         ┌─────────────────────┐
+                         │        USER         │
+                         │  Web Browser / UI   │
+                         └──────────┬──────────┘
+                                    │
+                                    ▼
+                    ┌───────────────────────────┐
+                    │     REACT FRONTEND        │
+                    │      (Vite + TSX)         │
+                    │                           │
+                    │  • Login / Signup         │
+                    │  • Dashboard              │
+                    │  • PantryIQ               │
+                    │  • MediTrack              │
+                    │  • HomeCare               │
+                    │  • FamilyPlus             │
+                    │  • DocVault               │
+                    │  • PolicyWatch            │
+                    │  • UtilityDesk            │
+                    │  • AI Assistant           │
+                    └─────────────┬─────────────┘
+                                  │
+                         HTTP / REST API
+                                  │
+                                  ▼
+                    ┌───────────────────────────┐
+                    │      BACKEND SERVER       │
+                    │     Node.js + Express     │
+                    │                           │
+                    │  Routes                   │
+                    │       ↓                   │
+                    │  Middleware               │
+                    │       ↓                   │
+                    │  Controllers              │
+                    │       ↓                   │
+                    │  Business Logic           │
+                    └───────┬─────────┬─────────┘
+                            │         │
+                 ┌──────────┘         └─────────────┐
+                 ▼                                  ▼
+      ┌─────────────────────┐            ┌─────────────────────┐
+      │      MongoDB        │            │    AI / ML Layer    │
+      │                     │            │                     │
+      │ • Users             │            │ • AI Assistant      │
+      │ • Family Data       │            │ • Predictions       │
+      │ • Pantry Data       │            │ • Recommendations   │
+      │ • Medical Data      │            │                     │
+      │ • Documents         │            └─────────────────────┘
+      └─────────────────────┘
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │ JSON Response   │
+                   └────────┬────────┘
+                            │
+                            ▼
+                    ┌───────────────┐
+                    │ React Frontend│
+                    │   Updates UI  │
+                    └───────────────┘
