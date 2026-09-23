@@ -1,0 +1,10 @@
+{
+  "description": "Manage family life effortlessly with this AI-powered assistant, helping Indian families track medicines, groceries, bills, and events all in one place.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
