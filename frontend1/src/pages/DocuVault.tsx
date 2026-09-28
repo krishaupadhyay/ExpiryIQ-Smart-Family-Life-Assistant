@@ -29,6 +29,7 @@ type Doc = {
   documentNumber: string
   issueDate?: string | null
   expiry?: string | null
+  alertDaysBefore?: number
   source?: 'manual' | 'scan'
 }
 
@@ -45,6 +46,7 @@ const emptyForm = {
   documentNumber: '',
   issueDate: '',
   expiry: '',
+  alertDaysBefore: '30',
   source: 'manual' as 'manual' | 'scan'
 }
 
@@ -142,6 +144,7 @@ export default function DocuVault() {
           documentNumber: form.documentNumber.trim(),
           issueDate: form.issueDate || null,
           expiry: form.expiry || null,
+          alertDaysBefore: form.alertDaysBefore === '' ? 30 : Number(form.alertDaysBefore),
           source: form.source
         })
       })
@@ -172,7 +175,7 @@ export default function DocuVault() {
     return matchCat && matchSearch
   })
 
-  const isExpiringSoon = (d: Doc) => d.expiry && Math.ceil((new Date(d.expiry).getTime() - Date.now()) / 86400000) <= 180
+  const isExpiringSoon = (d: Doc) => d.expiry && Math.ceil((new Date(d.expiry).getTime() - Date.now()) / 86400000) <= (d.alertDaysBefore ?? 30)
 
   const stats = [
     { label: 'Total Documents', value: documents.length, bg: 'bg-indigo-50', color: 'text-indigo-600' },
@@ -446,6 +449,15 @@ export default function DocuVault() {
                   <input type="date" value={form.expiry} onChange={e => setForm({ ...form, expiry: e.target.value })} className="w-full mt-1.5 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
                   <p className="text-[10px] text-slate-400 mt-1">Leave blank if this document doesn't expire</p>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Remind me before expiry</label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input type="number" min="0" value={form.alertDaysBefore} onChange={e => setForm({ ...form, alertDaysBefore: e.target.value })} className="w-24 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
+                  <span className="text-sm text-slate-500">day(s) before expiry</span>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">Only used if the document has an expiry date</p>
               </div>
 
               {formError && <p className="text-xs text-red-500">{formError}</p>}

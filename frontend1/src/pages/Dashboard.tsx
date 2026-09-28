@@ -13,7 +13,8 @@ import {
   Users,
   Wrench,
   Zap,
-  Activity
+  Activity,
+  Bell
 } from 'lucide-react'
 import {
   Area,
@@ -28,6 +29,7 @@ import {
 // ✅ Import auth hook (fixed — was an absolute Windows path before, which breaks on any other machine)
 import { useAuth } from '../context/AuthContext'
 import { apiRequest } from '../services/api'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 const spendingData: any[] = []
 
@@ -51,6 +53,9 @@ export default function Dashboard() {
   // ✅ Real dashboard data pulled from the backend
   const [summary, setSummary] = useState<Summary | null>(null)
   const [summaryError, setSummaryError] = useState('')
+
+  // Browser push reminders (medicine dose times, expiry / due-date alerts)
+  const push = usePushNotifications()
 
   const familyMembers = user?.familyMembers || []
 
@@ -219,6 +224,34 @@ export default function Dashboard() {
   return (
 
     <div className="p-4 lg:p-6 space-y-6">
+
+      {/* =========================
+          PUSH REMINDERS
+      ========================= */}
+
+      {push.isSupported && push.status !== 'subscribed' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3">
+          <Bell className="w-5 h-5 text-blue-600 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-blue-800 text-sm">Turn on browser reminders</p>
+            <p className="text-blue-700 text-xs mt-0.5">
+              {push.status === 'denied'
+                ? 'Notifications are blocked in your browser. Allow them in site settings, then reload this page.'
+                : 'Get medicine-time alerts and expiry / due-date reminders even when this tab is closed.'}
+            </p>
+            {push.error && <p className="text-red-600 text-xs mt-1">{push.error}</p>}
+          </div>
+          {push.status !== 'denied' && (
+            <button
+              onClick={push.subscribe}
+              disabled={push.loading}
+              className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl disabled:opacity-60"
+            >
+              {push.loading ? 'Enabling…' : 'Enable'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* =========================
           WELCOME BANNER

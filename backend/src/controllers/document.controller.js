@@ -40,6 +40,7 @@ const addDocument = async (req, res) => {
       documentNumber,
       issueDate,
       expiry,
+      alertDaysBefore,
       source
     } = req.body;
 
@@ -66,6 +67,7 @@ const addDocument = async (req, res) => {
       documentNumber: documentNumber?.trim() || '',
       issueDate: issueDate ? new Date(issueDate) : null,
       expiry: expiry ? new Date(expiry) : null,
+      alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 30,
       source: source === 'scan' ? 'scan' : 'manual'
     });
 
@@ -102,7 +104,8 @@ const updateDocument = async (req, res) => {
       category,
       documentNumber,
       issueDate,
-      expiry
+      expiry,
+      alertDaysBefore
     } = req.body;
 
     if (familyMemberId && familyMemberId !== String(document.familyMemberId)) {
@@ -119,6 +122,7 @@ const updateDocument = async (req, res) => {
     if (documentNumber !== undefined) document.documentNumber = documentNumber.trim();
     if (issueDate !== undefined) document.issueDate = issueDate ? new Date(issueDate) : null;
     if (expiry !== undefined) document.expiry = expiry ? new Date(expiry) : null;
+    if (alertDaysBefore !== undefined && alertDaysBefore !== '') document.alertDaysBefore = Number(alertDaysBefore);
 
     await document.save();
 

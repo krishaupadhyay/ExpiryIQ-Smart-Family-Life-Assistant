@@ -10,6 +10,8 @@ const billSchema = new mongoose.Schema(
     amount: { type: Number, required: true, min: 0 },
     units: { type: String, default: '', trim: true },
     dueDate: { type: Date, required: true },
+    // How many days before the due date the user wants to be alerted
+    alertDaysBefore: { type: Number, default: 3, min: 0 },
     paid: { type: Boolean, default: false }
   },
   { timestamps: true }

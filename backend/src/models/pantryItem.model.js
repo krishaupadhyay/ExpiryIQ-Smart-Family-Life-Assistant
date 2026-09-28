@@ -8,7 +8,9 @@ const pantryItemSchema = new mongoose.Schema(
     quantity: { type: Number, required: true, min: 0 },
     maxQty: { type: Number, required: true, min: 0 },
     unit: { type: String, default: 'units', trim: true },
-    expiry: { type: Date, required: true }
+    expiry: { type: Date, required: true },
+    // How many days before expiry the user wants to be alerted
+    alertDaysBefore: { type: Number, default: 7, min: 0 }
   },
   { timestamps: true }
 );

@@ -12,7 +12,7 @@ const getItems = async (req, res) => {
 
 const addItem = async (req, res) => {
   try {
-    const { name, category, quantity, maxQty, unit, expiry } = req.body;
+    const { name, category, quantity, maxQty, unit, expiry, alertDaysBefore } = req.body;
 
     if (!name || !category || quantity === undefined || maxQty === undefined || !expiry) {
       return res.status(400).json({ message: 'Name, category, quantity, max quantity and expiry are required.' });
@@ -25,7 +25,8 @@ const addItem = async (req, res) => {
       quantity: Number(quantity),
       maxQty: Number(maxQty),
       unit: unit?.trim() || 'units',
-      expiry: new Date(expiry)
+      expiry: new Date(expiry),
+      alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 7
     });
 
     return res.status(201).json({ message: 'Item added successfully.', item });
@@ -45,6 +46,7 @@ const updateItem = async (req, res) => {
     if (req.body.quantity !== undefined) item.quantity = Number(req.body.quantity);
     if (req.body.maxQty !== undefined) item.maxQty = Number(req.body.maxQty);
     if (req.body.expiry !== undefined) item.expiry = new Date(req.body.expiry);
+    if (req.body.alertDaysBefore !== undefined && req.body.alertDaysBefore !== '') item.alertDaysBefore = Number(req.body.alertDaysBefore);
 
     await item.save();
     return res.json({ message: 'Item updated successfully.', item });

@@ -11,6 +11,7 @@ type Bill = {
   amount: number
   units: string
   dueDate: string
+  alertDaysBefore: number
   paid: boolean
 }
 
@@ -27,8 +28,9 @@ const categoryStyle: Record<string, { emoji: string; color: string }> = {
 function getStatus(bill: Bill): 'overdue' | 'due-soon' | 'upcoming' | 'paid' {
   if (bill.paid) return 'paid'
   const daysUntil = Math.ceil((new Date(bill.dueDate).getTime() - Date.now()) / 86400000)
+  const alertDays = typeof bill.alertDaysBefore === 'number' ? bill.alertDaysBefore : 3
   if (daysUntil < 0) return 'overdue'
-  if (daysUntil <= 3) return 'due-soon'
+  if (daysUntil <= alertDays) return 'due-soon'
   return 'upcoming'
 }
 
@@ -39,7 +41,7 @@ const statusConfig = {
   paid: { label: 'Paid', badge: 'bg-green-100 text-green-700', border: 'border-green-100' },
 }
 
-const emptyForm = { name: '', category: '', provider: '', accountNo: '', amount: '', units: '', dueDate: '' }
+const emptyForm = { name: '', category: '', provider: '', accountNo: '', amount: '', units: '', dueDate: '', alertDaysBefore: '3' }
 
 export default function UtilityDesk() {
   const [bills, setBills] = useState<Bill[]>([])
@@ -86,7 +88,8 @@ export default function UtilityDesk() {
           accountNo: form.accountNo.trim(),
           amount: Number(form.amount),
           units: form.units.trim(),
-          dueDate: form.dueDate
+          dueDate: form.dueDate,
+          alertDaysBefore: form.alertDaysBefore === '' ? 3 : Number(form.alertDaysBefore)
         })
       })
       await loadBills()
@@ -204,7 +207,7 @@ export default function UtilityDesk() {
                     <div className="flex items-center gap-4 mt-2">
                       <span className="text-xl font-extrabold text-slate-800">₹{bill.amount.toLocaleString('en-IN')}</span>
                       {bill.units && <span className="text-xs text-slate-500">{bill.units}</span>}
-                      <span className={`text-xs ml-auto ${daysUntil < 0 ? 'text-red-500 font-semibold' : daysUntil <= 3 ? 'text-orange-500 font-semibold' : 'text-slate-400'}`}>
+                      <span className={`text-xs ml-auto ${daysUntil < 0 ? 'text-red-500 font-semibold' : daysUntil <= (bill.alertDaysBefore ?? 3) ? 'text-orange-500 font-semibold' : 'text-slate-400'}`}>
                         {daysUntil < 0 ? `${Math.abs(daysUntil)}d overdue` : `Due ${daysUntil === 0 ? 'today' : `in ${daysUntil}d`}`}
                       </span>
                     </div>
@@ -269,6 +272,13 @@ export default function UtilityDesk() {
               <div>
                 <label className="text-sm font-semibold text-slate-700">Due date *</label>
                 <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })} className="w-full mt-1.5 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Remind me before due date</label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input type="number" min="0" value={form.alertDaysBefore} onChange={e => setForm({ ...form, alertDaysBefore: e.target.value })} className="w-24 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
+                  <span className="text-sm text-slate-500">day(s) before due date</span>
+                </div>
               </div>
 
               {formError && <p className="text-xs text-red-500">{formError}</p>}

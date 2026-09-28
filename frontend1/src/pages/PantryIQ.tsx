@@ -10,6 +10,7 @@ type Item = {
   maxQty: number
   unit: string
   expiry: string
+  alertDaysBefore: number
 }
 
 const categories = ['All', 'Grains & Dal', 'Dairy', 'Vegetables', 'Spices', 'Oils & Ghee', 'Snacks', 'Beverages', 'Other']
@@ -17,8 +18,9 @@ const categories = ['All', 'Grains & Dal', 'Dairy', 'Vegetables', 'Spices', 'Oil
 function getStatus(item: Item): 'critical' | 'low' | 'good' {
   const ratio = item.maxQty > 0 ? item.quantity / item.maxQty : 1
   const daysToExpiry = Math.ceil((new Date(item.expiry).getTime() - Date.now()) / 86400000)
+  const alertDays = typeof item.alertDaysBefore === 'number' ? item.alertDaysBefore : 7
   if (item.quantity === 0 || daysToExpiry <= 2) return 'critical'
-  if (ratio <= 0.3 || daysToExpiry <= 7) return 'low'
+  if (ratio <= 0.3 || daysToExpiry <= alertDays) return 'low'
   return 'good'
 }
 
@@ -28,7 +30,7 @@ const statusConfig = {
   good: { label: 'Sufficient', bar: 'bg-green-500', badge: 'bg-green-100 text-green-700' },
 }
 
-const emptyForm = { name: '', category: '', quantity: '', maxQty: '', unit: 'kg', expiry: '' }
+const emptyForm = { name: '', category: '', quantity: '', maxQty: '', unit: 'kg', expiry: '', alertDaysBefore: '7' }
 
 export default function PantryIQ() {
   const [items, setItems] = useState<Item[]>([])
@@ -77,7 +79,8 @@ export default function PantryIQ() {
           quantity: Number(form.quantity),
           maxQty: Number(form.maxQty),
           unit: form.unit.trim() || 'units',
-          expiry: form.expiry
+          expiry: form.expiry,
+          alertDaysBefore: form.alertDaysBefore === '' ? 7 : Number(form.alertDaysBefore)
         })
       })
       await loadItems()
@@ -204,7 +207,7 @@ export default function PantryIQ() {
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span className={daysToExpiry <= 7 ? 'text-red-500 font-semibold' : ''}>
+                  <span className={daysToExpiry <= (item.alertDaysBefore ?? 7) ? 'text-red-500 font-semibold' : ''}>
                     Exp: {new Date(item.expiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
                   </span>
                   <div className="flex items-center gap-2">
@@ -258,6 +261,13 @@ export default function PantryIQ() {
               <div>
                 <label className="text-sm font-semibold text-slate-700">Expiry date *</label>
                 <input type="date" value={form.expiry} onChange={e => setForm({ ...form, expiry: e.target.value })} className="w-full mt-1.5 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Remind me before expiry</label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input type="number" min="0" value={form.alertDaysBefore} onChange={e => setForm({ ...form, alertDaysBefore: e.target.value })} className="w-24 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
+                  <span className="text-sm text-slate-500">day(s) before expiry</span>
+                </div>
               </div>
 
               {formError && <p className="text-xs text-red-500">{formError}</p>}

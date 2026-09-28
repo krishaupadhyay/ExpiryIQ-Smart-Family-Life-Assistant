@@ -12,7 +12,7 @@ const getBills = async (req, res) => {
 
 const addBill = async (req, res) => {
   try {
-    const { name, category, provider, accountNo, amount, units, dueDate } = req.body;
+    const { name, category, provider, accountNo, amount, units, dueDate, alertDaysBefore } = req.body;
 
     if (!name || !category || amount === undefined || !dueDate) {
       return res.status(400).json({ message: 'Name, category, amount and due date are required.' });
@@ -26,7 +26,8 @@ const addBill = async (req, res) => {
       accountNo: accountNo?.trim() || '',
       amount: Number(amount),
       units: units?.trim() || '',
-      dueDate: new Date(dueDate)
+      dueDate: new Date(dueDate),
+      alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 3
     });
 
     return res.status(201).json({ message: 'Bill added successfully.', bill });
@@ -45,6 +46,7 @@ const updateBill = async (req, res) => {
     fields.forEach(f => { if (req.body[f] !== undefined) bill[f] = req.body[f]; });
     if (req.body.amount !== undefined) bill.amount = Number(req.body.amount);
     if (req.body.dueDate !== undefined) bill.dueDate = new Date(req.body.dueDate);
+    if (req.body.alertDaysBefore !== undefined && req.body.alertDaysBefore !== '') bill.alertDaysBefore = Number(req.body.alertDaysBefore);
     if (req.body.paid !== undefined) bill.paid = req.body.paid;
 
     await bill.save();

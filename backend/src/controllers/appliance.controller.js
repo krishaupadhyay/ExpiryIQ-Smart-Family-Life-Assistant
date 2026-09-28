@@ -12,7 +12,7 @@ const getAppliances = async (req, res) => {
 
 const addAppliance = async (req, res) => {
   try {
-    const { name, category, brand, model, warrantyExpiry, lastService, nextService, notes } = req.body;
+    const { name, category, brand, model, warrantyExpiry, alertDaysBefore, lastService, nextService, notes } = req.body;
 
     if (!name || !category || !warrantyExpiry) {
       return res.status(400).json({ message: 'Name, category and warranty expiry are required.' });
@@ -25,6 +25,7 @@ const addAppliance = async (req, res) => {
       brand: brand?.trim() || '',
       model: model?.trim() || '',
       warrantyExpiry: new Date(warrantyExpiry),
+      alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 30,
       lastService: lastService ? new Date(lastService) : null,
       nextService: nextService ? new Date(nextService) : null,
       notes: notes?.trim() || ''
@@ -45,6 +46,7 @@ const updateAppliance = async (req, res) => {
     const fields = ['name', 'category', 'brand', 'model', 'notes'];
     fields.forEach(f => { if (req.body[f] !== undefined) appliance[f] = req.body[f]; });
     if (req.body.warrantyExpiry !== undefined) appliance.warrantyExpiry = new Date(req.body.warrantyExpiry);
+    if (req.body.alertDaysBefore !== undefined && req.body.alertDaysBefore !== '') appliance.alertDaysBefore = Number(req.body.alertDaysBefore);
     if (req.body.lastService !== undefined) appliance.lastService = req.body.lastService ? new Date(req.body.lastService) : null;
     if (req.body.nextService !== undefined) appliance.nextService = req.body.nextService ? new Date(req.body.nextService) : null;
 

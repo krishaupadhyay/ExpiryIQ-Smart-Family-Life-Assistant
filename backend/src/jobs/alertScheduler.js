@@ -1,12 +1,14 @@
 const cron = require('node-cron');
 const Medicine = require('../models/medicine.model');
 const Document = require('../models/document.model');
+const Bill = require('../models/bill.model');
+const Policy = require('../models/policy.model');
+const PantryItem = require('../models/pantryItem.model');
+const Appliance = require('../models/appliance.model');
 const Notification = require('../models/notification.model');
 const { sendPushToUser } = require('../controllers/push.controller');
 
-const EXPIRY_WARNING_DAYS = 7;
-const DOCUMENT_WARNING_DAYS = 30; // documents get a longer lead time — renewals take longer than a medicine refill
-const LOW_STOCK_RATIO = 0.2; // 20% remaining or less
+const LOW_STOCK_RATIO = 0.2; // 20% remaining or less, still fixed — not date-based, so no "days before" applies
 
 async function alreadyAlertedRecently(userId, module, relatedId) {
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -19,16 +21,62 @@ async function alreadyAlertedRecently(userId, module, relatedId) {
   return !!existing;
 }
 
+// ===============================
+// GENERIC "expiring / renewing / due soon" CHECK
+// Reused across Document, Bill, Policy, PantryItem and Appliance — each item
+// supplies its own alertDaysBefore, so the lead time is per-item, not module-wide.
+// ===============================
+async function checkExpiryAlerts({ Model, module, dateField, defaultAlertDays, buildMessage, pushTitle, pushUrl, extraFilter = {} }) {
+  console.log(`[alerts] Checking ${module}...`);
+  const items = await Model.find({ [dateField]: { $ne: null }, ...extraFilter });
+  let created = 0;
+
+  for (const item of items) {
+    const dateValue = item[dateField];
+    if (!dateValue) continue;
+
+    const alertDays = typeof item.alertDaysBefore === 'number' ? item.alertDaysBefore : defaultAlertDays;
+    const daysLeft = Math.ceil((new Date(dateValue).getTime() - Date.now()) / 86400000);
+
+    if (daysLeft > alertDays) continue;
+    if (await alreadyAlertedRecently(item.userId, module, item._id)) continue;
+
+    const message = buildMessage(item, daysLeft);
+
+    await Notification.create({
+      userId: item.userId,
+      module,
+      relatedId: item._id,
+      message,
+      urgent: daysLeft <= 3
+    });
+
+    await sendPushToUser(item.userId, {
+      title: pushTitle,
+      body: message,
+      url: pushUrl
+    });
+
+    created++;
+  }
+
+  console.log(`[alerts] ${module}: created ${created} new notification(s).`);
+}
+
+// ===============================
+// MEDICINE: expiry (per-item alertDaysBefore) + low stock (fixed ratio)
+// ===============================
 async function checkMedicineAlerts() {
   console.log('[alerts] Checking MediTrack expiry/stock...');
   const medicines = await Medicine.find({});
   let created = 0;
 
   for (const med of medicines) {
+    const alertDays = typeof med.alertDaysBefore === 'number' ? med.alertDaysBefore : 7;
     const daysToExpiry = Math.ceil((med.expiry.getTime() - Date.now()) / 86400000);
     const stockRatio = med.total > 0 ? med.remaining / med.total : 1;
 
-    const isExpiringSoon = daysToExpiry <= EXPIRY_WARNING_DAYS;
+    const isExpiringSoon = daysToExpiry <= alertDays;
     const isLowStock = stockRatio <= LOW_STOCK_RATIO;
 
     if (!isExpiringSoon && !isLowStock) continue;
@@ -63,60 +111,152 @@ async function checkMedicineAlerts() {
   console.log(`[alerts] MediTrack: created ${created} new notification(s).`);
 }
 
-async function checkDocumentAlerts() {
-  console.log('[alerts] Checking DocuVault expiry...');
-  // Only documents that actually have an expiry date set — many (e.g. PAN) don't expire
-  const documents = await Document.find({ expiry: { $ne: null } });
+// ===============================
+// MEDICINE DOSE REMINDERS — separate from expiry/stock, runs every minute.
+// Fires a push the moment the server's current "HH:mm" matches one of a
+// medicine's doseTimes, e.g. ["08:00", "20:30"].
+// ===============================
+async function checkMedicineDoseReminders() {
+  const currentTime = new Date().toTimeString().slice(0, 5); // "HH:mm", server-local time
+  const medicines = await Medicine.find({ doseTimes: currentTime });
+  if (medicines.length === 0) return;
+
   let created = 0;
 
-  for (const doc of documents) {
-    const daysToExpiry = Math.ceil((doc.expiry.getTime() - Date.now()) / 86400000);
-    const isExpiringSoon = daysToExpiry <= DOCUMENT_WARNING_DAYS;
+  for (const med of medicines) {
+    // Guard against double-firing if the cron tick overlaps itself — one alert per medicine per minute
+    const firedThisMinute = await Notification.findOne({
+      userId: med.userId,
+      module: 'MediTrack-Dose',
+      relatedId: med._id,
+      createdAt: { $gte: new Date(Date.now() - 55 * 1000) }
+    });
+    if (firedThisMinute) continue;
 
-    if (!isExpiringSoon) continue;
-    if (await alreadyAlertedRecently(doc.userId, 'DocuVault', doc._id)) continue;
-
-    let message;
-    if (daysToExpiry >= 0) {
-      message = `${doc.name} (${doc.memberName}) expires in ${daysToExpiry} day${daysToExpiry === 1 ? '' : 's'} — renewal recommended.`;
-    } else {
-      message = `${doc.name} (${doc.memberName}) has expired.`;
-    }
+    const message = `Time to take ${med.name} (${med.dosage}) for ${med.memberName} — ${currentTime}.`;
 
     await Notification.create({
-      userId: doc.userId,
-      module: 'DocuVault',
-      relatedId: doc._id,
+      userId: med.userId,
+      module: 'MediTrack-Dose',
+      relatedId: med._id,
       message,
-      urgent: daysToExpiry <= 7
+      urgent: false
     });
 
-    await sendPushToUser(doc.userId, {
-      title: '📄 Document Expiring',
+    await sendPushToUser(med.userId, {
+      title: '💊 Medicine Time',
       body: message,
-      url: '/docuvault'
+      url: '/meditrack'
     });
 
     created++;
   }
 
-  console.log(`[alerts] DocuVault: created ${created} new notification(s).`);
+  if (created > 0) console.log(`[alerts] MediTrack dose reminders: sent ${created}.`);
+}
+
+async function checkDocumentAlerts() {
+  return checkExpiryAlerts({
+    Model: Document,
+    module: 'DocuVault',
+    dateField: 'expiry',
+    defaultAlertDays: 30,
+    pushTitle: '📄 Document Expiring',
+    pushUrl: '/docuvault',
+    buildMessage: (doc, daysLeft) => daysLeft >= 0
+      ? `${doc.name} (${doc.memberName}) expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'} — renewal recommended.`
+      : `${doc.name} (${doc.memberName}) has expired.`
+  });
+}
+
+async function checkBillAlerts() {
+  return checkExpiryAlerts({
+    Model: Bill,
+    module: 'UtilityDesk',
+    dateField: 'dueDate',
+    defaultAlertDays: 3,
+    extraFilter: { paid: false }, // no point alerting on a bill that's already paid
+    pushTitle: '⚡ Bill Due Soon',
+    pushUrl: '/utilitydesk',
+    buildMessage: (bill, daysLeft) => daysLeft >= 0
+      ? `${bill.name} (₹${bill.amount}) is due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`
+      : `${bill.name} (₹${bill.amount}) is overdue.`
+  });
+}
+
+async function checkPolicyAlerts() {
+  return checkExpiryAlerts({
+    Model: Policy,
+    module: 'PolicyWatch',
+    dateField: 'renewalDate',
+    defaultAlertDays: 30,
+    pushTitle: '📋 Policy Renewal',
+    pushUrl: '/policywatch',
+    buildMessage: (policy, daysLeft) => daysLeft >= 0
+      ? `${policy.name} for ${policy.memberName} renews in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`
+      : `${policy.name} for ${policy.memberName} has lapsed.`
+  });
+}
+
+async function checkPantryAlerts() {
+  return checkExpiryAlerts({
+    Model: PantryItem,
+    module: 'PantryIQ',
+    dateField: 'expiry',
+    defaultAlertDays: 7,
+    pushTitle: '🛒 Pantry Item Expiring',
+    pushUrl: '/pantryiq',
+    buildMessage: (item, daysLeft) => daysLeft >= 0
+      ? `${item.name} expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`
+      : `${item.name} has expired.`
+  });
+}
+
+async function checkApplianceAlerts() {
+  return checkExpiryAlerts({
+    Model: Appliance,
+    module: 'HomeCare',
+    dateField: 'warrantyExpiry',
+    defaultAlertDays: 30,
+    pushTitle: '🛠️ Warranty Expiring',
+    pushUrl: '/homecare',
+    buildMessage: (appliance, daysLeft) => daysLeft >= 0
+      ? `${appliance.name} warranty expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`
+      : `${appliance.name} warranty has expired.`
+  });
 }
 
 async function runAllAlertChecks() {
   try {
     await checkMedicineAlerts();
     await checkDocumentAlerts();
+    await checkBillAlerts();
+    await checkPolicyAlerts();
+    await checkPantryAlerts();
+    await checkApplianceAlerts();
   } catch (error) {
     console.error('[alerts] Error running alert checks:', error);
   }
 }
 
-// Runs once every day at 8:00 AM server time.
-// For testing right now, you can temporarily change this to run every minute: '* * * * *'
+// Two schedules:
+// - Dose reminders need minute-level precision, so they run every minute.
+// - Expiry/renewal/due-date checks run once a day at 8:00 AM server time.
+//   For testing, you can temporarily swap '0 8 * * *' for '* * * * *' below.
 function startAlertScheduler() {
+  cron.schedule('* * * * *', checkMedicineDoseReminders);
   cron.schedule('0 8 * * *', runAllAlertChecks);
-  console.log('[alerts] Scheduler started — daily check at 8:00 AM.');
+  console.log('[alerts] Scheduler started — dose reminders every minute, expiry/renewal checks daily at 8:00 AM.');
 }
 
-module.exports = { startAlertScheduler, checkMedicineAlerts, checkDocumentAlerts, runAllAlertChecks };
+module.exports = {
+  startAlertScheduler,
+  checkMedicineAlerts,
+  checkMedicineDoseReminders,
+  checkDocumentAlerts,
+  checkBillAlerts,
+  checkPolicyAlerts,
+  checkPantryAlerts,
+  checkApplianceAlerts,
+  runAllAlertChecks
+};

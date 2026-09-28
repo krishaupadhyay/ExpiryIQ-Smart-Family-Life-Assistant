@@ -48,6 +48,13 @@ const documentSchema = new mongoose.Schema(
       default: null
     },
 
+    // How many days before expiry the user wants to be alerted
+    alertDaysBefore: {
+      type: Number,
+      default: 30,
+      min: 0
+    },
+
     // 'manual' or 'scan' — for your own records/demo
     source: {
       type: String,

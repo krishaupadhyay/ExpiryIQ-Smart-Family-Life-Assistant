@@ -19,7 +19,7 @@ const getPolicies = async (req, res) => {
 
 const addPolicy = async (req, res) => {
   try {
-    const { familyMemberId, name, type, insurer, policyNo, sumAssured, premium, startDate, renewalDate, contact } = req.body;
+    const { familyMemberId, name, type, insurer, policyNo, sumAssured, premium, startDate, renewalDate, alertDaysBefore, contact } = req.body;
 
     if (!familyMemberId || !name || !type || !renewalDate) {
       return res.status(400).json({ message: 'Family member, name, type and renewal date are required.' });
@@ -40,6 +40,7 @@ const addPolicy = async (req, res) => {
       premium: Number(premium) || 0,
       startDate: startDate ? new Date(startDate) : null,
       renewalDate: new Date(renewalDate),
+      alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 30,
       contact: contact?.trim() || ''
     });
 
@@ -60,6 +61,7 @@ const updatePolicy = async (req, res) => {
     if (req.body.premium !== undefined) policy.premium = Number(req.body.premium);
     if (req.body.startDate !== undefined) policy.startDate = req.body.startDate ? new Date(req.body.startDate) : null;
     if (req.body.renewalDate !== undefined) policy.renewalDate = new Date(req.body.renewalDate);
+    if (req.body.alertDaysBefore !== undefined && req.body.alertDaysBefore !== '') policy.alertDaysBefore = Number(req.body.alertDaysBefore);
 
     await policy.save();
     return res.json({ message: 'Policy updated successfully.', policy });

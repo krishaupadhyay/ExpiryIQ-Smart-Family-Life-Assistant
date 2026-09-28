@@ -23,11 +23,11 @@ const getSummary = async (req, res) => {
 
     const daysUntil = (d) => Math.ceil((new Date(d).getTime() - today.getTime()) / 86400000);
 
-    const medicinesExpiringSoon = medicines.filter(m => daysUntil(m.expiry) <= 7).length;
-    const documentsExpiringSoon = documents.filter(d => d.expiry && daysUntil(d.expiry) <= 30).length;
+    const medicinesExpiringSoon = medicines.filter(m => daysUntil(m.expiry) <= (m.alertDaysBefore ?? 7)).length;
+    const documentsExpiringSoon = documents.filter(d => d.expiry && daysUntil(d.expiry) <= (d.alertDaysBefore ?? 30)).length;
     const billsUnpaid = bills.filter(b => !b.paid);
     const billsDueAmount = billsUnpaid.reduce((sum, b) => sum + b.amount, 0);
-    const policiesRenewingSoon = policies.filter(p => daysUntil(p.renewalDate) <= 30).length;
+    const policiesRenewingSoon = policies.filter(p => daysUntil(p.renewalDate) <= (p.alertDaysBefore ?? 30)).length;
 
     const reminders = notifications
       .filter(n => !n.read)

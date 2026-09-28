@@ -9,6 +9,7 @@ type Appliance = {
   brand: string
   model: string
   warrantyExpiry: string
+  alertDaysBefore: number
   lastService?: string | null
   nextService?: string | null
   notes: string
@@ -28,7 +29,8 @@ function getStatus(a: Appliance): 'service-due' | 'warning' | 'good' {
     if (daysToService <= 14) return 'warning'
   }
   const warrantyDays = Math.ceil((new Date(a.warrantyExpiry).getTime() - Date.now()) / 86400000)
-  if (warrantyDays <= 30 && warrantyDays > 0) return 'warning'
+  const alertDays = typeof a.alertDaysBefore === 'number' ? a.alertDaysBefore : 30
+  if (warrantyDays <= alertDays && warrantyDays > 0) return 'warning'
   return 'good'
 }
 
@@ -38,7 +40,7 @@ const statusConfig = {
   good: { label: 'All Good', badge: 'bg-green-100 text-green-700' },
 }
 
-const emptyForm = { name: '', category: '', brand: '', model: '', warrantyExpiry: '', lastService: '', nextService: '', notes: '' }
+const emptyForm = { name: '', category: '', brand: '', model: '', warrantyExpiry: '', alertDaysBefore: '30', lastService: '', nextService: '', notes: '' }
 
 export default function HomeCare() {
   const [appliances, setAppliances] = useState<Appliance[]>([])
@@ -86,6 +88,7 @@ export default function HomeCare() {
           brand: form.brand.trim(),
           model: form.model.trim(),
           warrantyExpiry: form.warrantyExpiry,
+          alertDaysBefore: form.alertDaysBefore === '' ? 30 : Number(form.alertDaysBefore),
           lastService: form.lastService || null,
           nextService: form.nextService || null,
           notes: form.notes.trim()
@@ -275,6 +278,13 @@ export default function HomeCare() {
               <div>
                 <label className="text-sm font-semibold text-slate-700">Warranty expiry *</label>
                 <input type="date" value={form.warrantyExpiry} onChange={e => setForm({ ...form, warrantyExpiry: e.target.value })} className="w-full mt-1.5 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Remind me before warranty expires</label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input type="number" min="0" value={form.alertDaysBefore} onChange={e => setForm({ ...form, alertDaysBefore: e.target.value })} className="w-24 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
+                  <span className="text-sm text-slate-500">day(s) before expiry</span>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

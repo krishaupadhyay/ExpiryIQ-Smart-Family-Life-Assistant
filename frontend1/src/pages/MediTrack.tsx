@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Pill, Plus, Search, AlertTriangle, CheckCircle2, Filter, Sun, Moon, Sunset, X, Trash2, Camera, Upload, Loader2, Sparkles } from 'lucide-react'
+import { Pill, Plus, Search, AlertTriangle, CheckCircle2, Filter, Sun, Moon, Sunset, X, Trash2, Camera, Upload, Loader2, Sparkles, Bell } from 'lucide-react'
 import { apiRequest } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 
@@ -15,6 +15,8 @@ type Medicine = {
   dosage: string
   frequency: string
   times: string[]
+  doseTimes: string[]
+  alertDaysBefore: number
   total: number
   remaining: number
   expiry: string
@@ -28,10 +30,12 @@ const statusConfig = {
   good: { label: 'OK', color: 'bg-green-100 text-green-700', dot: 'bg-green-500' },
 }
 
-// Same status logic your original static data implied: expiry within 7 days wins over stock level
+// Same status logic your original static data implied: expiry within the item's
+// own alert window wins over stock level
 function getStatus(med: Medicine): keyof typeof statusConfig {
+  const alertDays = typeof med.alertDaysBefore === 'number' ? med.alertDaysBefore : 7
   const daysToExpiry = Math.ceil((new Date(med.expiry).getTime() - Date.now()) / 86400000)
-  if (daysToExpiry <= 7) return 'critical'
+  if (daysToExpiry <= alertDays) return 'critical'
   if (med.total > 0 && med.remaining / med.total <= 0.2) return 'warning'
   return 'good'
 }
@@ -43,6 +47,8 @@ const emptyForm = {
   dosage: '',
   frequency: '',
   times: [] as string[],
+  doseTimes: [] as string[],
+  alertDaysBefore: '7',
   total: '',
   remaining: '',
   expiry: '',
@@ -105,6 +111,24 @@ export default function MediTrack() {
     }))
   }
 
+  // ===============================
+  // DOSE TIME HELPERS — the actual clock times used to fire push reminders
+  // ===============================
+  function addDoseTime() {
+    setForm(prev => ({ ...prev, doseTimes: [...prev.doseTimes, '08:00'] }))
+  }
+
+  function updateDoseTime(index: number, value: string) {
+    setForm(prev => ({
+      ...prev,
+      doseTimes: prev.doseTimes.map((t, i) => (i === index ? value : t))
+    }))
+  }
+
+  function removeDoseTime(index: number) {
+    setForm(prev => ({ ...prev, doseTimes: prev.doseTimes.filter((_, i) => i !== index) }))
+  }
+
   async function handleScanImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -165,6 +189,8 @@ export default function MediTrack() {
           dosage: form.dosage.trim(),
           frequency: form.frequency.trim(),
           times: form.times,
+          doseTimes: form.doseTimes,
+          alertDaysBefore: form.alertDaysBefore === '' ? 7 : Number(form.alertDaysBefore),
           total: Number(form.total),
           remaining: Number(form.remaining),
           expiry: form.expiry,
@@ -209,7 +235,7 @@ export default function MediTrack() {
 
   const stats = [
     { label: 'Total Medicines', value: medicines.length, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Expiring in 7 days', value: medicines.filter(m => getStatus(m) === 'critical').length, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Expiring Soon', value: medicines.filter(m => getStatus(m) === 'critical').length, color: 'text-red-600', bg: 'bg-red-50' },
     { label: 'Low Stock', value: medicines.filter(m => getStatus(m) === 'warning').length, color: 'text-orange-600', bg: 'bg-orange-50' },
     { label: 'All Good', value: medicines.filter(m => getStatus(m) === 'good').length, color: 'text-green-600', bg: 'bg-green-50' },
   ]
@@ -350,7 +376,7 @@ export default function MediTrack() {
                       </div>
                       <div className="flex items-center justify-between">
                         <span>Stock: {med.remaining}/{med.total}</span>
-                        <span className={daysToExpiry <= 7 ? 'text-red-500 font-semibold' : ''}>
+                        <span className={daysToExpiry <= (med.alertDaysBefore ?? 7) ? 'text-red-500 font-semibold' : ''}>
                           Expires: {new Date(med.expiry).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} ({daysToExpiry}d)
                         </span>
                       </div>
@@ -363,10 +389,15 @@ export default function MediTrack() {
                       />
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {med.times.map((t: string) => (
                         <span key={t} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">{t}</span>
                       ))}
+                      {med.doseTimes && med.doseTimes.length > 0 && (
+                        <span className="flex items-center gap-1 text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+                          <Bell className="w-2.5 h-2.5" /> {med.doseTimes.join(', ')}
+                        </span>
+                      )}
                       <button
                         onClick={() => handleDelete(med._id)}
                         className="ml-auto text-slate-300 hover:text-red-500 transition-colors"
@@ -406,7 +437,9 @@ export default function MediTrack() {
                       <Pill className="w-3.5 h-3.5 text-red-400 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-slate-700 truncate">{m.name}</p>
-                        <p className="text-[10px] text-slate-400">{m.memberName} · {m.dosage}</p>
+                        <p className="text-[10px] text-slate-400">
+                          {m.memberName} · {m.dosage}{m.doseTimes && m.doseTimes.length > 0 ? ` · ${m.doseTimes.join(', ')}` : ''}
+                        </p>
                       </div>
                       <CheckCircle2 className="w-4 h-4 text-slate-300 shrink-0" />
                     </div>
@@ -583,6 +616,43 @@ export default function MediTrack() {
                 </div>
               </div>
 
+              {/* Exact dose reminder times — these drive the actual browser push notifications */}
+              <div>
+                <label className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                  <Bell className="w-3.5 h-3.5 text-blue-500" /> Reminder times
+                </label>
+                <p className="text-xs text-slate-400 mt-0.5 mb-2">
+                  We'll send a browser notification at each time you add below.
+                </p>
+                <div className="space-y-2">
+                  {form.doseTimes.map((time, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={time}
+                        onChange={e => updateDoseTime(i, e.target.value)}
+                        className="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeDoseTime(i)}
+                        className="text-slate-300 hover:text-red-500 transition-colors shrink-0"
+                        title="Remove this reminder"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addDoseTime}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add reminder time
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Total stock *</label>
@@ -624,6 +694,20 @@ export default function MediTrack() {
                     onChange={e => setForm({ ...form, expiry: e.target.value })}
                     className="w-full mt-1.5 px-4 py-2.5 border border-slate-200 rounded-xl text-sm"
                   />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Remind me before expiry</label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.alertDaysBefore}
+                    onChange={e => setForm({ ...form, alertDaysBefore: e.target.value })}
+                    className="w-24 px-4 py-2.5 border border-slate-200 rounded-xl text-sm"
+                  />
+                  <span className="text-sm text-slate-500">day(s) before expiry</span>
                 </div>
               </div>
 

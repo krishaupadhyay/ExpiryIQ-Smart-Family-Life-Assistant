@@ -15,6 +15,7 @@ type Policy = {
   premium: number
   startDate?: string | null
   renewalDate: string
+  alertDaysBefore: number
   contact: string
 }
 
@@ -28,8 +29,9 @@ const typeStyle: Record<string, { emoji: string; color: string }> = {
 
 function getStatus(p: Policy): 'critical' | 'warning' | 'good' {
   const daysToRenewal = Math.ceil((new Date(p.renewalDate).getTime() - Date.now()) / 86400000)
-  if (daysToRenewal <= 30) return 'critical'
-  if (daysToRenewal <= 90) return 'warning'
+  const alertDays = typeof p.alertDaysBefore === 'number' ? p.alertDaysBefore : 30
+  if (daysToRenewal <= alertDays) return 'critical'
+  if (daysToRenewal <= Math.max(90, alertDays)) return 'warning'
   return 'good'
 }
 
@@ -41,7 +43,7 @@ const statusConfig = {
 
 const emptyForm = {
   familyMemberId: '', name: '', type: '', insurer: '', policyNo: '',
-  sumAssured: '', premium: '', startDate: '', renewalDate: '', contact: ''
+  sumAssured: '', premium: '', startDate: '', renewalDate: '', alertDaysBefore: '30', contact: ''
 }
 
 export default function PolicyWatch() {
@@ -96,6 +98,7 @@ export default function PolicyWatch() {
           premium: Number(form.premium) || 0,
           startDate: form.startDate || null,
           renewalDate: form.renewalDate,
+          alertDaysBefore: form.alertDaysBefore === '' ? 30 : Number(form.alertDaysBefore),
           contact: form.contact.trim()
         })
       })
@@ -209,7 +212,7 @@ export default function PolicyWatch() {
                     <div className="mt-2 flex items-center gap-4 text-xs text-slate-500">
                       {policy.sumAssured && <span className="font-semibold text-slate-700">{policy.sumAssured}</span>}
                       <span>Premium: ₹{policy.premium.toLocaleString('en-IN')}/yr</span>
-                      <span className={daysToRenewal <= 30 ? 'text-red-500 font-semibold' : ''}>
+                      <span className={daysToRenewal <= (policy.alertDaysBefore ?? 30) ? 'text-red-500 font-semibold' : ''}>
                         {daysToRenewal > 0 ? `Renews in ${daysToRenewal} days` : 'Renewal overdue'}
                       </span>
                     </div>
@@ -307,6 +310,13 @@ export default function PolicyWatch() {
                 <div>
                   <label className="text-sm font-semibold text-slate-700">Renewal date *</label>
                   <input type="date" value={form.renewalDate} onChange={e => setForm({ ...form, renewalDate: e.target.value })} className="w-full mt-1.5 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Remind me before renewal</label>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input type="number" min="0" value={form.alertDaysBefore} onChange={e => setForm({ ...form, alertDaysBefore: e.target.value })} className="w-24 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
+                  <span className="text-sm text-slate-500">day(s) before renewal</span>
                 </div>
               </div>
               <div>

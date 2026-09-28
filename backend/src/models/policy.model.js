@@ -14,6 +14,8 @@ const policySchema = new mongoose.Schema(
     premium: { type: Number, default: 0, min: 0 },
     startDate: { type: Date, default: null },
     renewalDate: { type: Date, required: true },
+    // How many days before renewal the user wants to be alerted
+    alertDaysBefore: { type: Number, default: 30, min: 0 },
     contact: { type: String, default: '', trim: true }
   },
   { timestamps: true }

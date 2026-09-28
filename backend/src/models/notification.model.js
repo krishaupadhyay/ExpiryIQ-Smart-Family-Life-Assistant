@@ -8,10 +8,12 @@ const notificationSchema = new mongoose.Schema(
       required: true
     },
  
-    // Which module this alert is about — lets you route/filter later
+    // Which module this alert is about — lets you route/filter later.
+    // 'MediTrack-Dose' is separate from 'MediTrack' so a "take your medicine now"
+    // push never blocks (or gets blocked by) that same medicine's expiry/low-stock alert.
     module: {
       type: String,
-      enum: ['MediTrack', 'DocuVault', 'PolicyWatch', 'UtilityDesk', 'PantryIQ', 'HomeCare'],
+      enum: ['MediTrack', 'MediTrack-Dose', 'DocuVault', 'PolicyWatch', 'UtilityDesk', 'PantryIQ', 'HomeCare'],
       required: true
     },
  
