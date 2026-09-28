@@ -117,7 +117,6 @@ const userSchema = new mongoose.Schema(
             default: null
         },
 
-    
         otpExpiresAt: {
             type: Date,
             default: null
@@ -131,6 +130,20 @@ const userSchema = new mongoose.Schema(
         isPhoneVerified: {
             type: Boolean,
             default: false
+        },
+
+        // ===============================
+        // PASSWORD RESET
+        // ===============================
+
+        resetPasswordToken: {
+            type: String,
+            default: null
+        },
+
+        resetPasswordExpires: {
+            type: Date,
+            default: null
         },
 
         // ===============================

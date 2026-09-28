@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Bot, Mail, ArrowRight, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { apiRequest } from '../services/api'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -12,21 +13,19 @@ export default function ForgotPassword() {
     e.preventDefault()
     setError('')
 
-    if (!email) {
+    if (!email.trim()) {
       setError('Please enter your email address.')
       return
     }
 
     setLoading(true)
     try {
-      // TODO: replace with a real API call once the backend is connected
-      // const res = await fetch('http://localhost:5000/api/auth/forgot-password', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email })
-      // })
-      // if (!res.ok) throw new Error('Could not send reset link. Please try again.')
+      await apiRequest('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email: email.trim() })
+      })
 
+      // Backend returns the same response whether or not the email exists
       setSent(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
@@ -57,13 +56,9 @@ export default function ForgotPassword() {
                 Check your email
               </h1>
               <p className="text-sm mb-6" style={{ color: '#6B7280' }}>
-                If an account exists for <span className="font-semibold" style={{ color: '#1C1917' }}>{email}</span>, we've sent a link to reset your password.
+                If an account exists for <span className="font-semibold" style={{ color: '#1C1917' }}>{email}</span>, we've sent a link to reset your password. The link is valid for 15 minutes.
               </p>
-              <Link
-                to="/login"
-                className="inline-flex items-center gap-2 text-sm font-semibold"
-                style={{ color: '#0D9488' }}
-              >
+              <Link to="/login" className="inline-flex items-center gap-2 text-sm font-semibold" style={{ color: '#0D9488' }}>
                 <ArrowLeft className="w-4 h-4" /> Back to Sign In
               </Link>
             </div>

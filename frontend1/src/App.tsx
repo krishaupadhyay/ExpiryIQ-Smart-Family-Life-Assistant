@@ -8,6 +8,10 @@ import {
 // ✅ Import AuthProvider
 import { AuthProvider } from './context/AuthContext'
 
+//forgot pass
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
+
 // Pages
 import Landing from './pages/Landing'
 import Login from './pages/Login'
@@ -29,6 +33,7 @@ import AIAssistant from './pages/AIAssistant'
 import AppShell from './components/AppShell'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicOnlyRoute from './components/PublicOnlyRoute'
+
 
 
 export default function App() {
@@ -69,7 +74,8 @@ export default function App() {
             path="/logout"
             element={<Logout />}
           />
-
+         <Route path="/forgot-password" element={<ForgotPassword />} />
+         <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* ✅ ONLY LOGGED-IN USERS (Protected Routes) */}
           <Route element={<ProtectedRoute />}>

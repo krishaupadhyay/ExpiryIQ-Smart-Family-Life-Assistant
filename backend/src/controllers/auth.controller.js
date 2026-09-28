@@ -1,9 +1,10 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const User = require('../models/user.model');
 const generateOTP = require('../utils/otp');
-const { sendOTPEmail } = require('../config/mailer.js');
+const { sendOTPEmail, sendResetPasswordEmail } = require('../config/mailer.js');
 
 
 // ===============================
@@ -659,7 +660,7 @@ const getMe = async (req, res) => {
 
         const user =
             await User.findById(req.userId)
-                .select('-password -emailOtp -otpExpiresAt');
+              .select('-password -emailOtp -otpExpiresAt -resetPasswordToken -resetPasswordExpires');
 
         if (!user) {
 
@@ -838,6 +839,131 @@ const getFamilyMembers = async (req, res) => {
     }
 };
 
+// ===============================
+// FORGOT PASSWORD
+// ===============================
+
+const forgotPassword = async (req, res) => {
+    // Same response whether or not the email exists (prevents account enumeration)
+    const genericResponse = {
+        message: 'If an account with that email exists, a reset link has been sent.'
+    };
+
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required.' });
+        }
+
+        const user = await User.findOne({
+            email: email.toLowerCase().trim()
+        });
+
+        if (!user) {
+            return res.json(genericResponse);
+        }
+
+        // Raw token goes in the email, only the hash is stored
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const hashedToken = crypto
+            .createHash('sha256')
+            .update(rawToken)
+            .digest('hex');
+
+        user.resetPasswordToken = hashedToken;
+        user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+        await user.save();
+
+        const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
+
+        try {
+            await sendResetPasswordEmail(user.email, resetUrl);
+        } catch (mailError) {
+            user.resetPasswordToken = null;
+            user.resetPasswordExpires = null;
+            await user.save();
+            console.error('Reset email error:', mailError);
+            return res.status(500).json({
+                message: 'Unable to send reset email. Please try again later.'
+            });
+        }
+
+        return res.json(genericResponse);
+
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        return res.status(500).json({
+            message: 'Server error while processing request.'
+        });
+    }
+};
+
+
+// ===============================
+// RESET PASSWORD
+// ===============================
+
+const resetPassword = async (req, res) => {
+    try {
+        const { token } = req.params;
+        const { password } = req.body;
+
+        if (!token || !password) {
+            return res.status(400).json({
+                message: 'Token and new password are required.'
+            });
+        }
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({
+                message:
+                    'Password must be at least 8 characters and contain one uppercase letter, one lowercase letter and one digit.'
+            });
+        }
+
+        const hashedToken = crypto
+            .createHash('sha256')
+            .update(token)
+            .digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: { $gt: new Date() }
+        });
+
+        if (!user) {
+            return res.status(400).json({
+                message: 'Reset link is invalid or has expired.'
+            });
+        }
+
+        user.password = await bcrypt.hash(password, 12);
+
+        // Invalidate the token and any pending OTP, and unlock the account
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        user.emailOtp = null;
+        user.otpExpiresAt = null;
+        user.failedLoginAttempts = 0;
+        user.lockUntil = null;
+
+        await user.save();
+
+        return res.json({
+            message: 'Password reset successful. You can now log in.'
+        });
+
+    } catch (error) {
+        console.error('Reset password error:', error);
+        return res.status(500).json({
+            message: 'Server error while resetting password.'
+        });
+    }
+};
+
 
 // ===============================
 // EXPORT
@@ -852,6 +978,8 @@ module.exports = {
     logout,
     getMe,
     addFamilyMember,
-    getFamilyMembers
+    getFamilyMembers,
+    forgotPassword,
+    resetPassword
 
 };

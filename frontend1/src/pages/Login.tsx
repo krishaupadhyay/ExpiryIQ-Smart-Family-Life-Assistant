@@ -316,7 +316,7 @@ export default function Login() {
                 {/* Forgot password */}
                 <div className="text-right mb-6">
                   <Link
-                    to="/"
+                    to="/forgot-password"
                     className="text-xs font-medium"
                     style={{ color: '#0D9488' }}
                   >

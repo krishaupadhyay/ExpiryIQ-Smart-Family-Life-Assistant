@@ -8,7 +8,9 @@ const {
     verifyMFA,
     resendMFA,
     addFamilyMember,
-    getFamilyMembers
+    getFamilyMembers,
+    forgotPassword,
+    resetPassword
 } = require('../controllers/auth.controller');
 
 const requireAuth = require('../middleware/auth.middleware');
@@ -31,6 +33,15 @@ router.post('/resend-mfa', resendMFA);
 router.post('/logout', logout);
 
 router.get('/me', requireAuth, getMe);
+
+
+// ===============================
+// PASSWORD RESET ROUTES
+// ===============================
+
+router.post('/forgot-password', forgotPassword);
+
+router.post('/reset-password/:token', resetPassword);
 
 
 // ===============================
