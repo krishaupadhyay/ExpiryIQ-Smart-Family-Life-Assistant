@@ -74,6 +74,7 @@ const medicineSchema = new mongoose.Schema(
       default: 7,
       min: 0
     },
+    alertTime: { type: String, default: '08:00', match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'alertTime must be HH:mm'] },
 
     total: {
       type: Number,

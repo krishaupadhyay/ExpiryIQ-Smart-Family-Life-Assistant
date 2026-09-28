@@ -10,7 +10,8 @@ const pantryItemSchema = new mongoose.Schema(
     unit: { type: String, default: 'units', trim: true },
     expiry: { type: Date, required: true },
     // How many days before expiry the user wants to be alerted
-    alertDaysBefore: { type: Number, default: 7, min: 0 }
+    alertDaysBefore: { type: Number, default: 7, min: 0 },
+    alertTime: { type: String, default: '08:00', match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'alertTime must be HH:mm'] }
   },
   { timestamps: true }
 );

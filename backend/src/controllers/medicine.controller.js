@@ -1,5 +1,6 @@
 
 const Medicine = require('../models/medicine.model');
+const { cleanAlertTime } = require('../utils/alertTime');
 const User = require('../models/user.model');
 
 const DOSE_TIME_REGEX = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -61,6 +62,7 @@ const addMedicine = async (req, res) => {
       times,
       doseTimes,
       alertDaysBefore,
+      alertTime,
       total,
       remaining,
       expiry,
@@ -94,6 +96,7 @@ const addMedicine = async (req, res) => {
       times: Array.isArray(times) ? times : [],
       doseTimes: cleanDoseTimes(doseTimes),
       alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 7,
+      alertTime: cleanAlertTime(alertTime),
       total: Number(total),
       remaining: Number(remaining),
       expiry: new Date(expiry),
@@ -137,6 +140,7 @@ const updateMedicine = async (req, res) => {
       times,
       doseTimes,
       alertDaysBefore,
+      alertTime,
       total,
       remaining,
       expiry
@@ -163,6 +167,7 @@ const updateMedicine = async (req, res) => {
     if (times !== undefined) medicine.times = times;
     if (doseTimes !== undefined) medicine.doseTimes = cleanDoseTimes(doseTimes);
     if (alertDaysBefore !== undefined && alertDaysBefore !== '') medicine.alertDaysBefore = Number(alertDaysBefore);
+    if (alertTime !== undefined) medicine.alertTime = cleanAlertTime(alertTime);
     if (total !== undefined) medicine.total = Number(total);
     if (remaining !== undefined) medicine.remaining = Number(remaining);
     if (expiry !== undefined) medicine.expiry = new Date(expiry);

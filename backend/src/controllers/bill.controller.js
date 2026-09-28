@@ -1,4 +1,5 @@
 const Bill = require('../models/bill.model');
+const { cleanAlertTime } = require('../utils/alertTime');
 
 const getBills = async (req, res) => {
   try {
@@ -12,7 +13,7 @@ const getBills = async (req, res) => {
 
 const addBill = async (req, res) => {
   try {
-    const { name, category, provider, accountNo, amount, units, dueDate, alertDaysBefore } = req.body;
+    const { name, category, provider, accountNo, amount, units, dueDate, alertDaysBefore, alertTime } = req.body;
 
     if (!name || !category || amount === undefined || !dueDate) {
       return res.status(400).json({ message: 'Name, category, amount and due date are required.' });
@@ -27,7 +28,8 @@ const addBill = async (req, res) => {
       amount: Number(amount),
       units: units?.trim() || '',
       dueDate: new Date(dueDate),
-      alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 3
+      alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 3,
+      alertTime: cleanAlertTime(alertTime)
     });
 
     return res.status(201).json({ message: 'Bill added successfully.', bill });
@@ -47,6 +49,7 @@ const updateBill = async (req, res) => {
     if (req.body.amount !== undefined) bill.amount = Number(req.body.amount);
     if (req.body.dueDate !== undefined) bill.dueDate = new Date(req.body.dueDate);
     if (req.body.alertDaysBefore !== undefined && req.body.alertDaysBefore !== '') bill.alertDaysBefore = Number(req.body.alertDaysBefore);
+    if (req.body.alertTime !== undefined) bill.alertTime = cleanAlertTime(req.body.alertTime);
     if (req.body.paid !== undefined) bill.paid = req.body.paid;
 
     await bill.save();

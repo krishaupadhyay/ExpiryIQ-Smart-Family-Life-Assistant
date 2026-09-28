@@ -40,7 +40,7 @@ const statusConfig = {
   good: { label: 'All Good', badge: 'bg-green-100 text-green-700' },
 }
 
-const emptyForm = { name: '', category: '', brand: '', model: '', warrantyExpiry: '', alertDaysBefore: '30', lastService: '', nextService: '', notes: '' }
+const emptyForm = { name: '', category: '', brand: '', model: '', warrantyExpiry: '', alertDaysBefore: '30', alertTime: '08:00', lastService: '', nextService: '', notes: '' }
 
 export default function HomeCare() {
   const [appliances, setAppliances] = useState<Appliance[]>([])
@@ -88,7 +88,7 @@ export default function HomeCare() {
           brand: form.brand.trim(),
           model: form.model.trim(),
           warrantyExpiry: form.warrantyExpiry,
-          alertDaysBefore: form.alertDaysBefore === '' ? 30 : Number(form.alertDaysBefore),
+          alertDaysBefore: form.alertDaysBefore === '' ? 30 : Number(form.alertDaysBefore), alertTime: form.alertTime || '08:00',
           lastService: form.lastService || null,
           nextService: form.nextService || null,
           notes: form.notes.trim()
@@ -284,6 +284,13 @@ export default function HomeCare() {
                 <div className="flex items-center gap-2 mt-1.5">
                   <input type="number" min="0" value={form.alertDaysBefore} onChange={e => setForm({ ...form, alertDaysBefore: e.target.value })} className="w-24 px-4 py-2.5 border border-slate-200 rounded-xl text-sm" />
                   <span className="text-sm text-slate-500">day(s) before expiry</span>
+                </div>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  <span className="text-sm text-slate-500">at</span>
+                  <input type="time" value={form.alertTime} onChange={e => setForm({ ...form, alertTime: e.target.value })} className="px-3 py-2 border border-slate-200 rounded-xl text-sm" />
+                  {([['Morning', '08:00'], ['Afternoon', '14:00'], ['Night', '20:00']] as const).map(([label, t]) => (
+                    <button key={label} type="button" onClick={() => setForm({ ...form, alertTime: t })} className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${form.alertTime === t ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>{label}</button>
+                  ))}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">

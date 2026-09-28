@@ -16,6 +16,7 @@ const policySchema = new mongoose.Schema(
     renewalDate: { type: Date, required: true },
     // How many days before renewal the user wants to be alerted
     alertDaysBefore: { type: Number, default: 30, min: 0 },
+    alertTime: { type: String, default: '08:00', match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'alertTime must be HH:mm'] },
     contact: { type: String, default: '', trim: true }
   },
   { timestamps: true }

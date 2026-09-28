@@ -54,6 +54,7 @@ const documentSchema = new mongoose.Schema(
       default: 30,
       min: 0
     },
+    alertTime: { type: String, default: '08:00', match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'alertTime must be HH:mm'] },
 
     // 'manual' or 'scan' — for your own records/demo
     source: {

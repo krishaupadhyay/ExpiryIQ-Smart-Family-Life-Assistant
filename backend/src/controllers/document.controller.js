@@ -1,4 +1,5 @@
 const Document = require('../models/document.model');
+const { cleanAlertTime } = require('../utils/alertTime');
 const User = require('../models/user.model');
 
 
@@ -41,6 +42,7 @@ const addDocument = async (req, res) => {
       issueDate,
       expiry,
       alertDaysBefore,
+      alertTime,
       source
     } = req.body;
 
@@ -68,6 +70,7 @@ const addDocument = async (req, res) => {
       issueDate: issueDate ? new Date(issueDate) : null,
       expiry: expiry ? new Date(expiry) : null,
       alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 30,
+      alertTime: cleanAlertTime(alertTime),
       source: source === 'scan' ? 'scan' : 'manual'
     });
 
@@ -105,7 +108,8 @@ const updateDocument = async (req, res) => {
       documentNumber,
       issueDate,
       expiry,
-      alertDaysBefore
+      alertDaysBefore,
+      alertTime
     } = req.body;
 
     if (familyMemberId && familyMemberId !== String(document.familyMemberId)) {
@@ -123,6 +127,7 @@ const updateDocument = async (req, res) => {
     if (issueDate !== undefined) document.issueDate = issueDate ? new Date(issueDate) : null;
     if (expiry !== undefined) document.expiry = expiry ? new Date(expiry) : null;
     if (alertDaysBefore !== undefined && alertDaysBefore !== '') document.alertDaysBefore = Number(alertDaysBefore);
+    if (alertTime !== undefined) document.alertTime = cleanAlertTime(alertTime);
 
     await document.save();
 

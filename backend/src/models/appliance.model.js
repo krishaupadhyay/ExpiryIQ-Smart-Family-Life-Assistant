@@ -10,6 +10,7 @@ const applianceSchema = new mongoose.Schema(
     warrantyExpiry: { type: Date, required: true },
     // How many days before warranty expiry the user wants to be alerted
     alertDaysBefore: { type: Number, default: 30, min: 0 },
+    alertTime: { type: String, default: '08:00', match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'alertTime must be HH:mm'] },
     lastService: { type: Date, default: null },
     nextService: { type: Date, default: null },
     notes: { type: String, default: '', trim: true }

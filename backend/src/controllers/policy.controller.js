@@ -1,4 +1,5 @@
 const Policy = require('../models/policy.model');
+const { cleanAlertTime } = require('../utils/alertTime');
 const User = require('../models/user.model');
 
 async function getOwnedFamilyMember(userId, familyMemberId) {
@@ -19,7 +20,7 @@ const getPolicies = async (req, res) => {
 
 const addPolicy = async (req, res) => {
   try {
-    const { familyMemberId, name, type, insurer, policyNo, sumAssured, premium, startDate, renewalDate, alertDaysBefore, contact } = req.body;
+    const { familyMemberId, name, type, insurer, policyNo, sumAssured, premium, startDate, renewalDate, alertDaysBefore, alertTime, contact } = req.body;
 
     if (!familyMemberId || !name || !type || !renewalDate) {
       return res.status(400).json({ message: 'Family member, name, type and renewal date are required.' });
@@ -41,6 +42,7 @@ const addPolicy = async (req, res) => {
       startDate: startDate ? new Date(startDate) : null,
       renewalDate: new Date(renewalDate),
       alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 30,
+      alertTime: cleanAlertTime(alertTime),
       contact: contact?.trim() || ''
     });
 
@@ -62,6 +64,7 @@ const updatePolicy = async (req, res) => {
     if (req.body.startDate !== undefined) policy.startDate = req.body.startDate ? new Date(req.body.startDate) : null;
     if (req.body.renewalDate !== undefined) policy.renewalDate = new Date(req.body.renewalDate);
     if (req.body.alertDaysBefore !== undefined && req.body.alertDaysBefore !== '') policy.alertDaysBefore = Number(req.body.alertDaysBefore);
+    if (req.body.alertTime !== undefined) policy.alertTime = cleanAlertTime(req.body.alertTime);
 
     await policy.save();
     return res.json({ message: 'Policy updated successfully.', policy });

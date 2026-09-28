@@ -12,6 +12,7 @@ const billSchema = new mongoose.Schema(
     dueDate: { type: Date, required: true },
     // How many days before the due date the user wants to be alerted
     alertDaysBefore: { type: Number, default: 3, min: 0 },
+    alertTime: { type: String, default: '08:00', match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'alertTime must be HH:mm'] },
     paid: { type: Boolean, default: false }
   },
   { timestamps: true }

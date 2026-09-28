@@ -10,15 +10,25 @@ const { sendPushToUser } = require('../controllers/push.controller');
 
 const LOW_STOCK_RATIO = 0.2; // 20% remaining or less, still fixed — not date-based, so no "days before" applies
 
+// One alert per item per calendar day (server-local), so the user's chosen
+// alert time controls *when* it fires and it doesn't repeat all day.
 async function alreadyAlertedRecently(userId, module, relatedId) {
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
   const existing = await Notification.findOne({
     userId,
     module,
     relatedId,
-    createdAt: { $gte: oneDayAgo }
+    createdAt: { $gte: startOfToday }
   });
   return !!existing;
+}
+
+// True once the server clock has reached the item's chosen alert time today ("HH:mm").
+// If the item only just entered its alert window after that time, it fires right away.
+function isTimeReached(alertTime) {
+  const nowHHmm = new Date().toTimeString().slice(0, 5);
+  return nowHHmm >= (alertTime || '08:00');
 }
 
 // ===============================
@@ -27,7 +37,6 @@ async function alreadyAlertedRecently(userId, module, relatedId) {
 // supplies its own alertDaysBefore, so the lead time is per-item, not module-wide.
 // ===============================
 async function checkExpiryAlerts({ Model, module, dateField, defaultAlertDays, buildMessage, pushTitle, pushUrl, extraFilter = {} }) {
-  console.log(`[alerts] Checking ${module}...`);
   const items = await Model.find({ [dateField]: { $ne: null }, ...extraFilter });
   let created = 0;
 
@@ -39,6 +48,7 @@ async function checkExpiryAlerts({ Model, module, dateField, defaultAlertDays, b
     const daysLeft = Math.ceil((new Date(dateValue).getTime() - Date.now()) / 86400000);
 
     if (daysLeft > alertDays) continue;
+    if (!isTimeReached(item.alertTime)) continue;
     if (await alreadyAlertedRecently(item.userId, module, item._id)) continue;
 
     const message = buildMessage(item, daysLeft);
@@ -60,14 +70,13 @@ async function checkExpiryAlerts({ Model, module, dateField, defaultAlertDays, b
     created++;
   }
 
-  console.log(`[alerts] ${module}: created ${created} new notification(s).`);
+  if (created > 0) console.log(`[alerts] ${module}: created ${created} new notification(s).`);
 }
 
 // ===============================
 // MEDICINE: expiry (per-item alertDaysBefore) + low stock (fixed ratio)
 // ===============================
 async function checkMedicineAlerts() {
-  console.log('[alerts] Checking MediTrack expiry/stock...');
   const medicines = await Medicine.find({});
   let created = 0;
 
@@ -80,6 +89,7 @@ async function checkMedicineAlerts() {
     const isLowStock = stockRatio <= LOW_STOCK_RATIO;
 
     if (!isExpiringSoon && !isLowStock) continue;
+    if (!isTimeReached(med.alertTime)) continue;
     if (await alreadyAlertedRecently(med.userId, 'MediTrack', med._id)) continue;
 
     let message;
@@ -108,7 +118,7 @@ async function checkMedicineAlerts() {
     created++;
   }
 
-  console.log(`[alerts] MediTrack: created ${created} new notification(s).`);
+  if (created > 0) console.log(`[alerts] MediTrack: created ${created} new notification(s).`);
 }
 
 // ===============================
@@ -239,14 +249,16 @@ async function runAllAlertChecks() {
   }
 }
 
-// Two schedules:
-// - Dose reminders need minute-level precision, so they run every minute.
-// - Expiry/renewal/due-date checks run once a day at 8:00 AM server time.
-//   For testing, you can temporarily swap '0 8 * * *' for '* * * * *' below.
+// Everything runs every minute now, because each item has its own alert time
+// (and each medicine its own dose times). Each check exits quickly unless an
+// item's window is open and its time has been reached, and same-day dedup
+// guarantees at most one expiry-type alert per item per day.
 function startAlertScheduler() {
-  cron.schedule('* * * * *', checkMedicineDoseReminders);
-  cron.schedule('0 8 * * *', runAllAlertChecks);
-  console.log('[alerts] Scheduler started — dose reminders every minute, expiry/renewal checks daily at 8:00 AM.');
+  cron.schedule('* * * * *', async () => {
+    await checkMedicineDoseReminders();
+    await runAllAlertChecks();
+  });
+  console.log('[alerts] Scheduler started — checking every minute (dose times + per-item alert times).');
 }
 
 module.exports = {

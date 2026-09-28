@@ -1,4 +1,5 @@
 const PantryItem = require('../models/pantryItem.model');
+const { cleanAlertTime } = require('../utils/alertTime');
 
 const getItems = async (req, res) => {
   try {
@@ -12,7 +13,7 @@ const getItems = async (req, res) => {
 
 const addItem = async (req, res) => {
   try {
-    const { name, category, quantity, maxQty, unit, expiry, alertDaysBefore } = req.body;
+    const { name, category, quantity, maxQty, unit, expiry, alertDaysBefore, alertTime } = req.body;
 
     if (!name || !category || quantity === undefined || maxQty === undefined || !expiry) {
       return res.status(400).json({ message: 'Name, category, quantity, max quantity and expiry are required.' });
@@ -26,7 +27,8 @@ const addItem = async (req, res) => {
       maxQty: Number(maxQty),
       unit: unit?.trim() || 'units',
       expiry: new Date(expiry),
-      alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 7
+      alertDaysBefore: alertDaysBefore !== undefined && alertDaysBefore !== '' ? Number(alertDaysBefore) : 7,
+      alertTime: cleanAlertTime(alertTime)
     });
 
     return res.status(201).json({ message: 'Item added successfully.', item });
@@ -47,6 +49,7 @@ const updateItem = async (req, res) => {
     if (req.body.maxQty !== undefined) item.maxQty = Number(req.body.maxQty);
     if (req.body.expiry !== undefined) item.expiry = new Date(req.body.expiry);
     if (req.body.alertDaysBefore !== undefined && req.body.alertDaysBefore !== '') item.alertDaysBefore = Number(req.body.alertDaysBefore);
+    if (req.body.alertTime !== undefined) item.alertTime = cleanAlertTime(req.body.alertTime);
 
     await item.save();
     return res.json({ message: 'Item updated successfully.', item });
