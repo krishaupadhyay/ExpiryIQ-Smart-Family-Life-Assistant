@@ -7,11 +7,13 @@ const familyMemberSchema = new mongoose.Schema(
       ref: 'User',
       required: true
     },
+
     name: {
       type: String,
       required: true,
       trim: true
     },
+
     relation: {
       type: String,
       required: true,
@@ -25,6 +27,7 @@ const familyMemberSchema = new mongoose.Schema(
         'Grandfather',
         'Grandmother',
         'Aunt',
+        'Wife',
         'wife',
         'Husband',
         'Uncle',
@@ -32,6 +35,7 @@ const familyMemberSchema = new mongoose.Schema(
         'Other'
       ]
     },
+
     age: {
       type: Number,
       min: 0,

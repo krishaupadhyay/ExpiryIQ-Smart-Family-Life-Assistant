@@ -13,7 +13,8 @@ import {
   Users,
   Wrench,
   Zap,
-  Activity
+  Activity,
+  Bell
 } from 'lucide-react'
 import {
   Area,
@@ -25,161 +26,119 @@ import {
   YAxis
 } from 'recharts'
 
-// ✅ Import auth hook
-import { useAuth } from "D:/Documents/ExpiryIQ/frontend1/src/context/AuthContext.tsx";
+// Auth + API + Push Notifications
+import { useAuth } from '../context/AuthContext'
+import { apiRequest } from '../services/api'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 const spendingData: any[] = []
 
-const modules = [
-  {
-    path: '/meditrack',
-    icon: Pill,
-    label: 'MediTrack',
-    desc: 'No medicines yet',
-    bg: 'bg-red-50',
-    iconColor: 'text-red-500',
-    border: 'border-red-100',
-    badge: 'Add first',
-    badgeColor: 'bg-red-100 text-red-600'
-  },
-  {
-    path: '/pantryiq',
-    icon: ShoppingBasket,
-    label: 'PantryIQ',
-    desc: 'No items yet',
-    bg: 'bg-green-50',
-    iconColor: 'text-green-600',
-    border: 'border-green-100',
-    badge: 'Add first',
-    badgeColor: 'bg-green-100 text-green-700'
-  },
-  {
-    path: '/docuvault',
-    icon: FileText,
-    label: 'DocuVault',
-    desc: 'No documents yet',
-    bg: 'bg-indigo-50',
-    iconColor: 'text-indigo-500',
-    border: 'border-indigo-100',
-    badge: 'Add first',
-    badgeColor: 'bg-indigo-100 text-indigo-700'
-  },
-  {
-    path: '/policywatch',
-    icon: Shield,
-    label: 'PolicyWatch',
-    desc: 'No policies yet',
-    bg: 'bg-purple-50',
-    iconColor: 'text-purple-500',
-    border: 'border-purple-100',
-    badge: 'Add first',
-    badgeColor: 'bg-purple-100 text-purple-700'
-  },
-  {
-    path: '/utilitydesk',
-    icon: Zap,
-    label: 'UtilityDesk',
-    desc: 'No bills yet',
-    bg: 'bg-yellow-50',
-    iconColor: 'text-yellow-600',
-    border: 'border-yellow-100',
-    badge: 'Add first',
-    badgeColor: 'bg-yellow-100 text-yellow-700'
-  },
-  {
-    path: '/homecare',
-    icon: Wrench,
-    label: 'HomeCare',
-    desc: 'No appliances yet',
-    bg: 'bg-orange-50',
-    iconColor: 'text-orange-500',
-    border: 'border-orange-100',
-    badge: 'Add first',
-    badgeColor: 'bg-orange-100 text-orange-700'
-  },
-  {
-    path: '/familypulse',
-    icon: CalendarHeart,
-    label: 'FamilyPulse',
-    desc: 'No events yet',
-    bg: 'bg-pink-50',
-    iconColor: 'text-pink-500',
-    border: 'border-pink-100',
-    badge: 'Add first',
-    badgeColor: 'bg-pink-100 text-pink-700'
-  },
-  {
-    path: '/ai-assistant',
-    icon: Bot,
-    label: 'AI Assistant',
-    desc: 'Ask anything',
-    bg: 'bg-violet-50',
-    iconColor: 'text-violet-600',
-    border: 'border-violet-100',
-    badge: 'Try it',
-    badgeColor: 'bg-violet-100 text-violet-700'
+type Summary = {
+  counts: {
+    medicines: number
+    documents: number
+    policies: number
+    bills: number
+    pantryItems: number
+    appliances: number
   }
-]
-
-const reminders: any[] = []
-const familyMembers: any[] = []
-const recentActivity: any[] = []
+  alerts: {
+    medicinesExpiringSoon: number
+    documentsExpiringSoon: number
+    billsUnpaidCount: number
+    billsDueAmount: number
+    policiesRenewingSoon: number
+  }
+  recentActivity: {
+    text: string
+    time: string
+    module: string
+  }[]
+}
 
 export default function Dashboard() {
-
   const navigate = useNavigate()
 
-  // ✅ Use global auth context
-  const { isAuthenticated, loading: authLoading } = useAuth()
+  // Global auth context
+  const {
+    isAuthenticated,
+    loading: authLoading,
+    user
+  } = useAuth()
 
   // Currently selected family member
   const [selectedProfile, setSelectedProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  // ✅ Read selected family member from localStorage
-  useEffect(() => {
+  // Real dashboard data pulled from backend
+  const [summary, setSummary] = useState<Summary | null>(null)
+  const [summaryError, setSummaryError] = useState('')
 
+  // Browser push reminders
+  const push = usePushNotifications()
+
+  // Family members from logged-in user
+  const familyMembers = user?.familyMembers || []
+
+  // Read selected family member from localStorage
+  useEffect(() => {
     const storedProfile = localStorage.getItem('selectedProfile')
 
     if (storedProfile) {
-
       try {
-
         const profile = JSON.parse(storedProfile)
         setSelectedProfile(profile)
-
       } catch (error) {
-
         console.error('Invalid selected profile:', error)
         localStorage.removeItem('selectedProfile')
-
       }
-
     }
 
     setLoading(false)
-
   }, [])
 
-  // ✅ Redirect if no profile selected
+  // Redirect if no profile selected
   useEffect(() => {
-
     if (!loading && !selectedProfile) {
-
       const storedProfile = localStorage.getItem('selectedProfile')
 
       if (!storedProfile) {
-        console.warn('No profile selected, redirecting to profiles page')
+        console.warn(
+          'No profile selected, redirecting to profiles page'
+        )
+
         navigate('/profiles', {
           replace: true
         })
       }
-
     }
-
   }, [selectedProfile, loading, navigate])
 
-  // ⏳ Show loading if auth is still checking
+  // Load real dashboard summary from backend
+  useEffect(() => {
+    async function loadSummary() {
+      try {
+        const data = await apiRequest(
+          '/dashboard/summary',
+          {
+            method: 'GET'
+          }
+        )
+
+        setSummary(data)
+      } catch (error) {
+        setSummaryError(
+          error instanceof Error
+            ? error.message
+            : 'Failed to load dashboard data.'
+        )
+      }
+    }
+
+    loadSummary()
+  }, [])
+
+  // Show loading while authentication/profile is loading
   if (authLoading || loading) {
     return (
       <div
@@ -191,7 +150,12 @@ export default function Dashboard() {
           background: '#FFFDF7'
         }}
       >
-        <div style={{ textAlign: 'center', color: '#6B7280' }}>
+        <div
+          style={{
+            textAlign: 'center',
+            color: '#6B7280'
+          }}
+        >
           <div
             style={{
               width: '40px',
@@ -203,10 +167,14 @@ export default function Dashboard() {
               margin: '0 auto 16px'
             }}
           />
+
           <p>Loading dashboard...</p>
+
           <style>{`
             @keyframes spin {
-              to { transform: rotate(360deg); }
+              to {
+                transform: rotate(360deg);
+              }
             }
           `}</style>
         </div>
@@ -221,10 +189,194 @@ export default function Dashboard() {
     navigate('/profiles')
   }
 
+  const c = summary?.counts
+  const a = summary?.alerts
+
+  // Dashboard modules using real backend counts
+  const modules = [
+    {
+      path: '/meditrack',
+      icon: Pill,
+      label: 'MediTrack',
+      desc: c
+        ? `${c.medicines} medicine${c.medicines === 1 ? '' : 's'}`
+        : 'No medicines yet',
+      bg: 'bg-red-50',
+      iconColor: 'text-red-500',
+      border: 'border-red-100',
+      badge:
+        a && a.medicinesExpiringSoon > 0
+          ? `${a.medicinesExpiringSoon} expiring`
+          : c?.medicines
+            ? 'All good'
+            : 'Add first',
+      badgeColor: 'bg-red-100 text-red-600'
+    },
+    {
+      path: '/pantryiq',
+      icon: ShoppingBasket,
+      label: 'PantryIQ',
+      desc: c
+        ? `${c.pantryItems} item${c.pantryItems === 1 ? '' : 's'}`
+        : 'No items yet',
+      bg: 'bg-green-50',
+      iconColor: 'text-green-600',
+      border: 'border-green-100',
+      badge: c?.pantryItems
+        ? 'Tracked'
+        : 'Add first',
+      badgeColor: 'bg-green-100 text-green-700'
+    },
+    {
+      path: '/docuvault',
+      icon: FileText,
+      label: 'DocuVault',
+      desc: c
+        ? `${c.documents} document${c.documents === 1 ? '' : 's'}`
+        : 'No documents yet',
+      bg: 'bg-indigo-50',
+      iconColor: 'text-indigo-500',
+      border: 'border-indigo-100',
+      badge:
+        a && a.documentsExpiringSoon > 0
+          ? `${a.documentsExpiringSoon} expiring`
+          : c?.documents
+            ? 'All good'
+            : 'Add first',
+      badgeColor: 'bg-indigo-100 text-indigo-700'
+    },
+    {
+      path: '/policywatch',
+      icon: Shield,
+      label: 'PolicyWatch',
+      desc: c
+        ? `${c.policies} polic${c.policies === 1 ? 'y' : 'ies'}`
+        : 'No policies yet',
+      bg: 'bg-purple-50',
+      iconColor: 'text-purple-500',
+      border: 'border-purple-100',
+      badge:
+        a && a.policiesRenewingSoon > 0
+          ? `${a.policiesRenewingSoon} renewing`
+          : c?.policies
+            ? 'All good'
+            : 'Add first',
+      badgeColor: 'bg-purple-100 text-purple-700'
+    },
+    {
+      path: '/utilitydesk',
+      icon: Zap,
+      label: 'UtilityDesk',
+      desc: c
+        ? `${c.bills} bill${c.bills === 1 ? '' : 's'}`
+        : 'No bills yet',
+      bg: 'bg-yellow-50',
+      iconColor: 'text-yellow-600',
+      border: 'border-yellow-100',
+      badge:
+        a && a.billsUnpaidCount > 0
+          ? `${a.billsUnpaidCount} unpaid`
+          : c?.bills
+            ? 'All paid'
+            : 'Add first',
+      badgeColor: 'bg-yellow-100 text-yellow-700'
+    },
+    {
+      path: '/homecare',
+      icon: Wrench,
+      label: 'HomeCare',
+      desc: c
+        ? `${c.appliances} appliance${c.appliances === 1 ? '' : 's'}`
+        : 'No appliances yet',
+      bg: 'bg-orange-50',
+      iconColor: 'text-orange-500',
+      border: 'border-orange-100',
+      badge: c?.appliances
+        ? 'Tracked'
+        : 'Add first',
+      badgeColor: 'bg-orange-100 text-orange-700'
+    },
+    {
+      path: '/familypulse',
+      icon: CalendarHeart,
+      label: 'FamilyPulse',
+      desc: 'View calendar',
+      bg: 'bg-pink-50',
+      iconColor: 'text-pink-500',
+      border: 'border-pink-100',
+      badge: 'Open',
+      badgeColor: 'bg-pink-100 text-pink-700'
+    },
+    {
+      path: '/ai-assistant',
+      icon: Bot,
+      label: 'AI Assistant',
+      desc: 'Ask anything',
+      bg: 'bg-violet-50',
+      iconColor: 'text-violet-600',
+      border: 'border-violet-100',
+      badge: 'Try it',
+      badgeColor: 'bg-violet-100 text-violet-700'
+    }
+  ]
 
   return (
-
     <div className="p-4 lg:p-6 space-y-6">
+
+      {/* =========================
+          PUSH REMINDERS
+      ========================= */}
+
+      {push.isSupported &&
+        push.status !== 'subscribed' && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3">
+
+            <Bell className="w-5 h-5 text-blue-600 shrink-0" />
+
+            <div className="flex-1 min-w-0">
+
+              <p className="font-bold text-blue-800 text-sm">
+                Turn on browser reminders
+              </p>
+
+              <p className="text-blue-700 text-xs mt-0.5">
+                {push.status === 'denied'
+                  ? 'Notifications are blocked in your browser. Allow them in site settings, then reload this page.'
+                  : 'Get medicine-time alerts and expiry / due-date reminders even when this tab is closed.'}
+              </p>
+
+              {push.error && (
+                <p className="text-red-600 text-xs mt-1">
+                  {push.error}
+                </p>
+              )}
+
+            </div>
+
+            {push.status !== 'denied' && (
+              <button
+                onClick={push.subscribe}
+                disabled={push.loading}
+                className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl disabled:opacity-60"
+              >
+                {push.loading
+                  ? 'Enabling…'
+                  : 'Enable'}
+              </button>
+            )}
+
+          </div>
+        )}
+
+      {/* =========================
+          SUMMARY ERROR
+      ========================= */}
+
+      {summaryError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
+          {summaryError}
+        </div>
+      )}
 
       {/* =========================
           WELCOME BANNER
@@ -240,12 +392,16 @@ export default function Dashboard() {
 
         <div
           className="absolute top-0 right-1/3 w-64 h-64 rounded-full blur-3xl opacity-20 pointer-events-none"
-          style={{ background: '#0D9488' }}
+          style={{
+            background: '#0D9488'
+          }}
         />
 
         <div
           className="absolute bottom-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-10 pointer-events-none"
-          style={{ background: '#D97706' }}
+          style={{
+            background: '#D97706'
+          }}
         />
 
         <div className="absolute right-0 top-0 w-64 h-full overflow-hidden hidden sm:block">
@@ -266,25 +422,19 @@ export default function Dashboard() {
 
         </div>
 
-
         <div className="relative z-10 flex items-start justify-between gap-4">
 
           <div>
 
             <h1 className="text-xl lg:text-2xl font-extrabold mb-1">
-
               Good Morning, {profileName}! 🌟
-
             </h1>
 
             <p className="text-blue-100 text-sm">
-
               Welcome to your family dashboard — add your first item to get started
-
             </p>
 
           </div>
-
 
           <div
             className="hidden sm:flex items-center gap-2 rounded-xl px-4 py-2 shrink-0"
@@ -297,19 +447,18 @@ export default function Dashboard() {
 
             <Activity
               className="w-4 h-4"
-              style={{ color: '#0D9488' }}
+              style={{
+                color: '#0D9488'
+              }}
             />
 
             <span className="text-sm font-semibold">
-
               Family Health: Good
-
             </span>
 
           </div>
 
         </div>
-
 
         {/* Statistics */}
 
@@ -318,59 +467,62 @@ export default function Dashboard() {
           {[
             {
               label: 'Medicines',
-              value: '0',
+              value: String(c?.medicines ?? 0),
               icon: Pill
             },
             {
               label: 'Grocery Items',
-              value: '0',
+              value: String(c?.pantryItems ?? 0),
               icon: ShoppingBasket
             },
             {
               label: 'Documents',
-              value: '0',
+              value: String(c?.documents ?? 0),
               icon: FileText
             },
             {
               label: 'Bills Due',
-              value: '0',
+              value: String(a?.billsUnpaidCount ?? 0),
               icon: Zap
             }
-          ].map(({ label, value, icon: Icon }) => (
+          ].map(
+            ({ label, value, icon: Icon }) => (
 
-            <div
-              key={label}
-              className="bg-white/15 rounded-xl p-3 flex items-center gap-3"
-            >
+              <div
+                key={label}
+                className="bg-white/15 rounded-xl p-3 flex items-center gap-3"
+              >
 
-              <Icon className="w-5 h-5 text-white/80" />
+                <Icon className="w-5 h-5 text-white/80" />
 
-              <div>
+                <div>
 
-                <p className="text-lg font-bold">
-                  {value}
-                </p>
+                  <p className="text-lg font-bold">
+                    {value}
+                  </p>
 
-                <p className="text-xs text-white/60">
-                  {label}
-                </p>
+                  <p className="text-xs text-white/60">
+                    {label}
+                  </p>
+
+                </div>
 
               </div>
 
-            </div>
-
-          ))}
+            )
+          )}
 
         </div>
 
       </div>
 
-
-      {/* Main Grid */}
+      {/* =========================
+          MAIN GRID
+      ========================= */}
 
       <div className="grid lg:grid-cols-3 gap-6">
 
-        {/* LEFT COLUMN (2/3) */}
+        {/* LEFT COLUMN */}
 
         <div className="lg:col-span-2 space-y-6">
 
@@ -386,7 +538,9 @@ export default function Dashboard() {
 
                 <button
                   key={module.path}
-                  onClick={() => navigate(module.path)}
+                  onClick={() =>
+                    navigate(module.path)
+                  }
                   className={`rounded-2xl p-5 text-left transition-all hover:shadow-lg hover:-translate-y-1 border ${module.border}`}
                   style={{
                     background: 'white'
@@ -399,61 +553,49 @@ export default function Dashboard() {
                       className={`w-10 h-10 rounded-lg flex items-center justify-center ${module.bg}`}
                     >
 
-                      <Icon className={`w-5 h-5 ${module.iconColor}`} />
+                      <Icon
+                        className={`w-5 h-5 ${module.iconColor}`}
+                      />
 
                     </div>
 
                     <span
                       className={`text-xs font-semibold px-2 py-1 rounded-full ${module.badgeColor}`}
                     >
-
                       {module.badge}
-
                     </span>
 
                   </div>
 
                   <h3 className="font-bold text-slate-800 mb-1">
-
                     {module.label}
-
                   </h3>
 
                   <p className="text-sm text-slate-500">
-
                     {module.desc}
-
                   </p>
 
                 </button>
 
               )
-
             })}
 
           </div>
 
-
           {/* Spending Chart */}
 
-          <div
-            className="rounded-2xl p-5 bg-white border border-slate-100"
-          >
+          <div className="rounded-2xl p-5 bg-white border border-slate-100">
 
             <div className="flex items-center justify-between mb-5">
 
               <div>
 
                 <h2 className="font-bold text-slate-800">
-
                   Spending Overview
-
                 </h2>
 
                 <p className="text-xs text-slate-400 mt-0.5">
-
                   Bills · Groceries · Medicines
-
                 </p>
 
               </div>
@@ -462,8 +604,13 @@ export default function Dashboard() {
 
             </div>
 
+            {/* Cost isn't tracked per item in the current schema,
+                so this chart remains empty instead of showing fake data. */}
 
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer
+              width="100%"
+              height={180}
+            >
 
               <AreaChart
                 data={spendingData}
@@ -612,13 +759,11 @@ export default function Dashboard() {
 
         </div>
 
-
-        {/* RIGHT COLUMN (1/3) */}
+        {/* RIGHT COLUMN */}
 
         <div className="space-y-6">
 
-
-          {/* AI */}
+          {/* AI INSIGHTS */}
 
           <div
             className="rounded-2xl p-5 text-white relative overflow-hidden"
@@ -639,15 +784,25 @@ export default function Dashboard() {
             </div>
 
             <p className="text-white/50 text-sm">
-              AI insights will appear here once you start adding data.
+
+              {summary &&
+              (a?.medicinesExpiringSoon ||
+                a?.documentsExpiringSoon ||
+                a?.billsUnpaidCount ||
+                a?.policiesRenewingSoon)
+                ? 'You have items needing attention — ask the AI Assistant what needs to be done next.'
+                : 'AI insights will appear here once you start adding data.'}
+
             </p>
 
-
             <button
-              onClick={() => navigate('/ai-assistant')}
+              onClick={() =>
+                navigate('/ai-assistant')
+              }
               className="mt-4 w-full rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-2"
               style={{
-                background: 'rgba(13,148,136,0.3)',
+                background:
+                  'rgba(13,148,136,0.3)',
                 border:
                   '1px solid rgba(13,148,136,0.4)'
               }}
@@ -660,7 +815,6 @@ export default function Dashboard() {
             </button>
 
           </div>
-
 
           {/* CURRENT FAMILY MEMBER */}
 
@@ -676,7 +830,6 @@ export default function Dashboard() {
 
             </div>
 
-
             <div className="flex items-center gap-3">
 
               <div
@@ -690,7 +843,6 @@ export default function Dashboard() {
                   .charAt(0)
                   .toUpperCase()}
               </div>
-
 
               <div className="flex-1">
 
@@ -706,12 +858,12 @@ export default function Dashboard() {
 
             </div>
 
-
             <button
               onClick={switchProfile}
               className="mt-4 w-full text-sm font-semibold py-2.5 rounded-xl"
               style={{
-                background: 'rgba(13,148,136,0.08)',
+                background:
+                  'rgba(13,148,136,0.08)',
                 color: '#0D9488'
               }}
             >
@@ -720,8 +872,7 @@ export default function Dashboard() {
 
           </div>
 
-
-          {/* Family Members */}
+          {/* FAMILY MEMBERS */}
 
           <div className="bg-white rounded-2xl border border-slate-100 p-5">
 
@@ -743,19 +894,58 @@ export default function Dashboard() {
 
             </div>
 
-
             {familyMembers.length === 0 && (
-
               <p className="text-sm text-slate-400 text-center py-4">
                 No family members added yet.
               </p>
+            )}
 
+            {familyMembers.length > 0 && (
+              <div className="space-y-2.5">
+
+                {familyMembers.map(
+                  (m: any) => (
+
+                    <div
+                      key={m._id}
+                      className="flex items-center gap-3"
+                    >
+
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
+                        style={{
+                          background:
+                            'linear-gradient(135deg, #0D9488, #D97706)'
+                        }}
+                      >
+                        {m.name
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+
+                      <div className="min-w-0">
+
+                        <p className="text-sm font-medium text-slate-700 truncate">
+                          {m.name}
+                        </p>
+
+                        <p className="text-xs text-slate-400">
+                          {m.relation}
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                  )
+                )}
+
+              </div>
             )}
 
           </div>
 
-
-          {/* Recent Activity */}
+          {/* RECENT ACTIVITY */}
 
           <div className="bg-white rounded-2xl border border-slate-100 p-5">
 
@@ -769,14 +959,46 @@ export default function Dashboard() {
 
             </div>
 
-
-            {recentActivity.length === 0 && (
-
+            {(!summary ||
+              summary.recentActivity.length === 0) && (
               <p className="text-sm text-slate-400 text-center py-4">
                 No activity yet.
               </p>
-
             )}
+
+            {summary &&
+              summary.recentActivity.length > 0 && (
+                <div className="space-y-3">
+
+                  {summary.recentActivity.map(
+                    (item, i) => (
+
+                      <div
+                        key={i}
+                        className="flex items-start gap-2.5"
+                      >
+
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />
+
+                        <div className="min-w-0">
+
+                          <p className="text-sm text-slate-700">
+                            {item.text}
+                          </p>
+
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {item.module}
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                    )
+                  )}
+
+                </div>
+              )}
 
           </div>
 

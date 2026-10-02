@@ -75,6 +75,10 @@ const userSchema = new mongoose.Schema(
             trim: true
         },
 
+        // ===============================
+        // UNIQUE EMAIL
+        // ===============================
+
         email: {
             type: String,
             required: true,
@@ -88,6 +92,10 @@ const userSchema = new mongoose.Schema(
             required: false,
             trim: true
         },
+
+        // ===============================
+        // PASSWORD
+        // ===============================
 
         password: {
             type: String,
@@ -162,7 +170,17 @@ const userSchema = new mongoose.Schema(
 
 
 // ===============================
-// EXPORT
+// EMAIL UNIQUE INDEX
+// ===============================
+
+userSchema.index(
+    { email: 1 },
+    { unique: true }
+);
+
+
+// ===============================
+// EXPORT MODEL
 // ===============================
 
 module.exports = mongoose.model('User', userSchema);

@@ -3,6 +3,17 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 
 const authRoutes = require('./routes/auth.routes');
+const medicineRoutes = require('./routes/medicine.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const documentRoutes = require('./routes/document.routes');
+const policyRoutes = require('./routes/policy.routes');
+const billRoutes = require('./routes/bill.routes');
+const pantryRoutes = require('./routes/pantryItem.routes');
+const applianceRoutes = require('./routes/appliance.routes');
+const familyPulseRoutes = require('./routes/familyPulse.routes');
+const aiRoutes = require('./routes/ai.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
+const pushRoutes = require('./routes/push.routes');
 
 const app = express();
 
@@ -28,6 +39,17 @@ app.use(cookieParser());
 // =========================
 
 app.use('/api/auth', authRoutes);
+app.use('/api/medicines', medicineRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/policies', policyRoutes);
+app.use('/api/bills', billRoutes);
+app.use('/api/pantry', pantryRoutes);
+app.use('/api/appliances', applianceRoutes);
+app.use('/api/familypulse', familyPulseRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/push', pushRoutes);
 
 
 // =========================
@@ -57,7 +79,6 @@ app.use((req, res) => {
 // =========================
 
 app.use((err, req, res, next) => {
-
     console.error(err);
 
     res.status(500).json({
@@ -65,6 +86,14 @@ app.use((err, req, res, next) => {
     });
 });
 
+
+// =========================
+// ALERT SCHEDULER
+// =========================
+
+const { startAlertScheduler } = require('./jobs/alertScheduler');
+
+startAlertScheduler();
 
 
 module.exports = app;

@@ -57,7 +57,6 @@ export default function Login() {
       localStorage.removeItem('selectedProfile')
 
       navigate('/profiles')
-
     } catch (err) {
       setError(
         err instanceof Error
@@ -66,7 +65,6 @@ export default function Login() {
       )
 
       console.error('Login error:', err)
-
     } finally {
       setLoading(false)
     }
@@ -99,7 +97,6 @@ export default function Login() {
 
       // JWT is created after MFA verification
       navigate('/profiles', { replace: true })
-
     } catch (err) {
       setError(
         err instanceof Error
@@ -108,7 +105,6 @@ export default function Login() {
       )
 
       console.error('MFA verification error:', err)
-
     } finally {
       setLoading(false)
     }
@@ -127,7 +123,6 @@ export default function Login() {
       })
 
       console.log('OTP resent:', data)
-
     } catch (err) {
       setError(
         err instanceof Error
@@ -182,7 +177,6 @@ export default function Login() {
         >
 
           {!otpStep ? (
-
             <>
               <h1
                 className="text-2xl font-bold mb-1"
@@ -254,7 +248,6 @@ export default function Login() {
                 </label>
 
                 <div className="relative mb-2">
-
                   <Lock
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4"
                     style={{ color: '#9CA3AF' }}
@@ -295,12 +288,12 @@ export default function Login() {
                     className="absolute right-3.5 top-1/2 -translate-y-1/2"
                     style={{ color: '#9CA3AF' }}
                   >
-                    {showPassword
-                      ? <EyeOff className="w-4 h-4" />
-                      : <Eye className="w-4 h-4" />
-                    }
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
-
                 </div>
 
                 {/* Error */}
@@ -340,7 +333,6 @@ export default function Login() {
                     <ArrowRight className="w-4 h-4" />
                   )}
                 </button>
-
               </form>
 
               <p
@@ -358,7 +350,6 @@ export default function Login() {
                 </Link>
               </p>
             </>
-
           ) : (
 
             /* ================= MFA OTP ================= */
@@ -382,7 +373,6 @@ export default function Login() {
               </p>
 
               <form onSubmit={handleVerifyOTP}>
-
                 <label
                   className="text-sm font-semibold block mb-1.5"
                   style={{ color: '#374151' }}
@@ -391,7 +381,6 @@ export default function Login() {
                 </label>
 
                 <div className="relative mb-2">
-
                   <Lock
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4"
                     style={{ color: '#9CA3AF' }}
@@ -403,7 +392,9 @@ export default function Login() {
                     maxLength={6}
                     value={otp}
                     onChange={e =>
-                      setOtp(e.target.value.replace(/\D/g, ''))
+                      setOtp(
+                        e.target.value.replace(/\D/g, '')
+                      )
                     }
                     placeholder="Enter 6-digit OTP"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all tracking-widest"
@@ -414,7 +405,6 @@ export default function Login() {
                     }}
                     autoFocus
                   />
-
                 </div>
 
                 {error && (
@@ -441,7 +431,6 @@ export default function Login() {
                     <ArrowRight className="w-4 h-4" />
                   )}
                 </button>
-
               </form>
 
               <p
@@ -461,7 +450,6 @@ export default function Login() {
                 </button>
               </p>
             </>
-
           )}
 
         </div>

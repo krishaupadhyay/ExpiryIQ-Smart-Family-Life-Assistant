@@ -9,7 +9,7 @@ import {
   User,
   Gift,
   Mail,
-  Phone
+  Phone,
 } from 'lucide-react'
 import { apiRequest } from '../services/api'
 
@@ -20,13 +20,15 @@ export default function ProfileSelection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showModal, setShowModal] = useState(false)
+
   const [formData, setFormData] = useState({
     name: '',
     relation: '',
     email: '',
     phone: '',
-    age: ''
+    age: '',
   })
+
   const [formError, setFormError] = useState('')
   const [formLoading, setFormLoading] = useState(false)
 
@@ -41,18 +43,18 @@ export default function ProfileSelection() {
       setError('')
 
       const data = await apiRequest('/auth/family-members', {
-        method: 'GET'
+        method: 'GET',
       })
 
       console.log('✅ Family members:', data.familyMembers)
       setFamilyMembers(data.familyMembers || [])
-
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
           : 'Failed to load family members'
       )
+
       console.error('Fetch family members error:', err)
     } finally {
       setLoading(false)
@@ -64,7 +66,7 @@ export default function ProfileSelection() {
     e.preventDefault()
     setFormError('')
 
-    // Validation
+    // Name validation
     if (!formData.name.trim()) {
       setFormError('Name is required')
       return
@@ -75,31 +77,43 @@ export default function ProfileSelection() {
       return
     }
 
+    // Relation validation
     if (!formData.relation.trim()) {
       setFormError('Relation is required')
       return
     }
 
-    // Email validation (optional but validate if provided)
-    if (formData.email) {
+    // Email validation - optional
+    if (formData.email.trim()) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
       if (!emailRegex.test(formData.email.trim())) {
         setFormError('Please enter a valid email address')
         return
       }
     }
 
-    // Phone validation (optional but validate if provided)
-    if (formData.phone) {
+    // Phone validation - optional
+    if (formData.phone.trim()) {
       const phoneRegex = /^[0-9+\-\s()]{7,15}$/
+
       if (!phoneRegex.test(formData.phone.trim())) {
         setFormError('Please enter a valid phone number')
         return
       }
     }
 
+    // Age validation
     if (formData.age && isNaN(Number(formData.age))) {
       setFormError('Age must be a number')
+      return
+    }
+
+    if (
+      formData.age &&
+      (Number(formData.age) < 0 || Number(formData.age) > 120)
+    ) {
+      setFormError('Age must be between 0 and 120')
       return
     }
 
@@ -113,17 +127,26 @@ export default function ProfileSelection() {
           relation: formData.relation.trim(),
           email: formData.email.trim() || undefined,
           phone: formData.phone.trim() || undefined,
-          age: formData.age ? Number(formData.age) : undefined
-        })
+          age: formData.age
+            ? Number(formData.age)
+            : undefined,
+        }),
       })
 
       console.log('✅ Family member added:', data)
 
-      // Fetch the updated list from backend
+      // Fetch updated list from backend
       await fetchFamilyMembers()
 
       // Reset form and close modal
-      setFormData({ name: '', relation: '', email: '', phone: '', age: '' })
+      setFormData({
+        name: '',
+        relation: '',
+        email: '',
+        phone: '',
+        age: '',
+      })
+
       setShowModal(false)
       setFormError('')
     } catch (err) {
@@ -132,6 +155,7 @@ export default function ProfileSelection() {
           ? err.message
           : 'Failed to add family member'
       )
+
       console.error('Add family member error:', err)
     } finally {
       setFormLoading(false)
@@ -140,7 +164,11 @@ export default function ProfileSelection() {
 
   // Select profile and navigate to dashboard
   function selectProfile(member: any) {
-    localStorage.setItem('selectedProfile', JSON.stringify(member))
+    localStorage.setItem(
+      'selectedProfile',
+      JSON.stringify(member)
+    )
+
     navigate('/dashboard')
   }
 
@@ -164,11 +192,12 @@ export default function ProfileSelection() {
               className="text-3xl lg:text-4xl font-bold mb-2"
               style={{
                 fontFamily: "'Playfair Display', Georgia, serif",
-                color: '#0F1A2E'
+                color: '#0F1A2E',
               }}
             >
               Select Your Profile
             </h1>
+
             <p
               className="text-base text-gray-600"
               style={{ color: '#6B7280' }}
@@ -182,11 +211,13 @@ export default function ProfileSelection() {
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all"
             style={{
               background: 'rgba(239, 68, 68, 0.08)',
-              color: '#EF4444'
+              color: '#EF4444',
             }}
           >
             <LogOut className="w-4 h-4" />
-            <span className="text-sm font-semibold">Logout</span>
+            <span className="text-sm font-semibold">
+              Logout
+            </span>
           </button>
         </div>
 
@@ -194,10 +225,9 @@ export default function ProfileSelection() {
         {loading && (
           <div className="text-center py-12">
             <div className="inline-block">
-              <div
-                className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-teal-500 animate-spin"
-              />
+              <div className="w-12 h-12 rounded-full border-4 border-slate-200 border-t-teal-500 animate-spin" />
             </div>
+
             <p
               className="text-base mt-4"
               style={{ color: '#6B7280' }}
@@ -213,7 +243,7 @@ export default function ProfileSelection() {
             className="rounded-2xl p-6 mb-6 text-center"
             style={{
               background: 'rgba(239, 68, 68, 0.08)',
-              border: '1px solid rgba(239, 68, 68, 0.2)'
+              border: '1px solid rgba(239, 68, 68, 0.2)',
             }}
           >
             <p
@@ -222,12 +252,13 @@ export default function ProfileSelection() {
             >
               {error}
             </p>
+
             <button
               onClick={fetchFamilyMembers}
               className="mt-3 px-4 py-2 rounded-lg text-sm font-semibold transition-all"
               style={{
                 background: 'rgba(239, 68, 68, 0.1)',
-                color: '#EF4444'
+                color: '#EF4444',
               }}
             >
               Try Again
@@ -251,10 +282,12 @@ export default function ProfileSelection() {
                   'from-blue-500 to-purple-500',
                   'from-pink-500 to-red-500',
                   'from-green-500 to-cyan-500',
-                  'from-purple-500 to-pink-500'
+                  'from-purple-500 to-pink-500',
                 ]
 
-                const colorIndex = familyMembers.indexOf(member) % colors.length
+                const colorIndex =
+                  familyMembers.indexOf(member) %
+                  colors.length
 
                 return (
                   <button
@@ -263,11 +296,14 @@ export default function ProfileSelection() {
                     className="rounded-2xl p-6 text-left transition-all hover:shadow-lg hover:-translate-y-1"
                     style={{
                       background: 'white',
-                      border: '1px solid rgba(15,26,46,0.08)',
-                      boxShadow: '0 4px 24px rgba(15,26,46,0.06)'
+                      border:
+                        '1px solid rgba(15,26,46,0.08)',
+                      boxShadow:
+                        '0 4px 24px rgba(15,26,46,0.06)',
                     }}
                   >
                     <div className="flex items-center gap-4">
+
                       {/* Avatar */}
                       <div
                         className={`w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-xl bg-gradient-to-br ${colors[colorIndex]} shrink-0`}
@@ -288,7 +324,8 @@ export default function ProfileSelection() {
                           className="text-sm"
                           style={{ color: '#6B7280' }}
                         >
-                          {member.relation || 'Family Member'}
+                          {member.relation ||
+                            'Family Member'}
                         </p>
 
                         {member.age && (
@@ -306,6 +343,15 @@ export default function ProfileSelection() {
                             style={{ color: '#9CA3AF' }}
                           >
                             {member.phone}
+                          </p>
+                        )}
+
+                        {member.email && (
+                          <p
+                            className="text-xs truncate"
+                            style={{ color: '#9CA3AF' }}
+                          >
+                            {member.email}
                           </p>
                         )}
                       </div>
@@ -326,17 +372,26 @@ export default function ProfileSelection() {
               onClick={() => setShowModal(true)}
               className="w-full rounded-2xl p-6 transition-all hover:shadow-lg hover:-translate-y-1"
               style={{
-                background: 'linear-gradient(135deg, rgba(13,148,136,0.08), rgba(217,119,6,0.08))',
-                border: '2px dashed rgba(13,148,136,0.3)'
+                background:
+                  'linear-gradient(135deg, rgba(13,148,136,0.08), rgba(217,119,6,0.08))',
+                border:
+                  '2px dashed rgba(13,148,136,0.3)',
               }}
             >
               <div className="flex items-center justify-center gap-3">
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center"
-                  style={{ background: 'rgba(13,148,136,0.15)' }}
+                  style={{
+                    background:
+                      'rgba(13,148,136,0.15)',
+                  }}
                 >
-                  <Plus className="w-6 h-6" style={{ color: '#0D9488' }} />
+                  <Plus
+                    className="w-6 h-6"
+                    style={{ color: '#0D9488' }}
+                  />
                 </div>
+
                 <div className="text-left">
                   <h3
                     className="font-bold"
@@ -344,6 +399,7 @@ export default function ProfileSelection() {
                   >
                     Add Family Member
                   </h3>
+
                   <p
                     className="text-sm"
                     style={{ color: '#6B7280' }}
@@ -357,74 +413,101 @@ export default function ProfileSelection() {
         )}
 
         {/* Empty State */}
-        {!loading && familyMembers.length === 0 && !error && (
-          <div
-            className="rounded-2xl p-12 text-center"
-            style={{
-              background: 'white',
-              border: '1px solid rgba(15,26,46,0.08)'
-            }}
-          >
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4" style={{ background: 'rgba(13,148,136,0.1)' }}>
-              <Users className="w-8 h-8" style={{ color: '#0D9488' }} />
-            </div>
-
-            <h3
-              className="text-lg font-bold mb-2"
-              style={{ color: '#0F1A2E' }}
-            >
-              No family members yet
-            </h3>
-
-            <p
-              className="text-base mb-6"
-              style={{ color: '#6B7280' }}
-            >
-              Create your first family member profile to get started.
-            </p>
-
-            <button
-              onClick={() => setShowModal(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-opacity hover:opacity-90"
+        {!loading &&
+          familyMembers.length === 0 &&
+          !error && (
+            <div
+              className="rounded-2xl p-12 text-center"
               style={{
-                background: 'linear-gradient(135deg, #0D9488, #D97706)'
+                background: 'white',
+                border:
+                  '1px solid rgba(15,26,46,0.08)',
               }}
             >
-              <Plus className="w-4 h-4" />
-              Create First Member
-            </button>
-          </div>
-        )}
+              <div
+                className="inline-flex items-center justify-center w-16 h-16 rounded-xl mb-4"
+                style={{
+                  background:
+                    'rgba(13,148,136,0.1)',
+                }}
+              >
+                <Users
+                  className="w-8 h-8"
+                  style={{ color: '#0D9488' }}
+                />
+              </div>
 
+              <h3
+                className="text-lg font-bold mb-2"
+                style={{ color: '#0F1A2E' }}
+              >
+                No family members yet
+              </h3>
+
+              <p
+                className="text-base mb-6"
+                style={{ color: '#6B7280' }}
+              >
+                Create your first family member profile
+                to get started.
+              </p>
+
+              <button
+                onClick={() => setShowModal(true)}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-opacity hover:opacity-90"
+                style={{
+                  background:
+                    'linear-gradient(135deg, #0D9488, #D97706)',
+                }}
+              >
+                <Plus className="w-4 h-4" />
+                Create First Member
+              </button>
+            </div>
+          )}
       </div>
 
       {/* Modal - Add Family Member */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
           <div
-            className="rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto"
+            className="rounded-3xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto relative"
             style={{
               background: 'white',
-              boxShadow: '0 20px 60px rgba(15,26,46,0.15)'
+              boxShadow:
+                '0 20px 60px rgba(15,26,46,0.15)',
             }}
           >
+
             {/* Close Button */}
             <button
               onClick={() => {
                 setShowModal(false)
                 setFormError('')
-                setFormData({ name: '', relation: '', email: '', phone: '', age: '' })
+                setFormData({
+                  name: '',
+                  relation: '',
+                  email: '',
+                  phone: '',
+                  age: '',
+                })
               }}
               className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <X className="w-5 h-5" style={{ color: '#6B7280' }} />
+              <X
+                className="w-5 h-5"
+                style={{ color: '#6B7280' }}
+              />
             </button>
 
             {/* Header */}
             <div className="mb-6">
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                style={{ background: 'linear-gradient(135deg, #0D9488, #D97706)' }}
+                style={{
+                  background:
+                    'linear-gradient(135deg, #0D9488, #D97706)',
+                }}
               >
                 <Gift className="w-6 h-6 text-white" />
               </div>
@@ -432,8 +515,9 @@ export default function ProfileSelection() {
               <h2
                 className="text-2xl font-bold mb-1"
                 style={{
-                  fontFamily: "'Playfair Display', Georgia, serif",
-                  color: '#0F1A2E'
+                  fontFamily:
+                    "'Playfair Display', Georgia, serif",
+                  color: '#0F1A2E',
                 }}
               >
                 Add Family Member
@@ -449,6 +533,7 @@ export default function ProfileSelection() {
 
             {/* Form */}
             <form onSubmit={handleAddFamilyMember}>
+
               {/* Name */}
               <label
                 className="text-sm font-semibold block mb-1.5"
@@ -468,22 +553,31 @@ export default function ProfileSelection() {
                   required
                   value={formData.name}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({
+                      ...formData,
+                      name: e.target.value,
+                    })
                   }
                   placeholder="e.g., John Doe"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all"
                   style={{
-                    background: 'rgba(15,26,46,0.03)',
-                    border: '1px solid rgba(15,26,46,0.1)',
-                    color: '#1C1917'
+                    background:
+                      'rgba(15,26,46,0.03)',
+                    border:
+                      '1px solid rgba(15,26,46,0.1)',
+                    color: '#1C1917',
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.border = '1px solid #0D9488'
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(13,148,136,0.12)'
+                    e.currentTarget.style.border =
+                      '1px solid #0D9488'
+                    e.currentTarget.style.boxShadow =
+                      '0 0 0 3px rgba(13,148,136,0.12)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.border = '1px solid rgba(15,26,46,0.1)'
-                    e.currentTarget.style.boxShadow = 'none'
+                    e.currentTarget.style.border =
+                      '1px solid rgba(15,26,46,0.1)'
+                    e.currentTarget.style.boxShadow =
+                      'none'
                   }}
                 />
               </div>
@@ -500,41 +594,56 @@ export default function ProfileSelection() {
                 required
                 value={formData.relation}
                 onChange={(e) =>
-                  setFormData({ ...formData, relation: e.target.value })
+                  setFormData({
+                    ...formData,
+                    relation: e.target.value,
+                  })
                 }
                 className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all mb-4"
                 style={{
-                  background: 'rgba(15,26,46,0.03)',
-                  border: '1px solid rgba(15,26,46,0.1)',
-                  color: '#1C1917'
+                  background:
+                    'rgba(15,26,46,0.03)',
+                  border:
+                    '1px solid rgba(15,26,46,0.1)',
+                  color: '#1C1917',
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.border = '1px solid #0D9488'
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(13,148,136,0.12)'
+                  e.currentTarget.style.border =
+                    '1px solid #0D9488'
+                  e.currentTarget.style.boxShadow =
+                    '0 0 0 3px rgba(13,148,136,0.12)'
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.border = '1px solid rgba(15,26,46,0.1)'
-                  e.currentTarget.style.boxShadow = 'none'
+                  e.currentTarget.style.border =
+                    '1px solid rgba(15,26,46,0.1)'
+                  e.currentTarget.style.boxShadow =
+                    'none'
                 }}
               >
-                <option value="">Select a relation</option>
+                <option value="">
+                  Select a relation
+                </option>
                 <option value="Father">Father</option>
                 <option value="Mother">Mother</option>
                 <option value="Son">Son</option>
                 <option value="Daughter">Daughter</option>
+                <option value="Wife">Wife</option>
+                <option value="Husband">Husband</option>
                 <option value="Brother">Brother</option>
                 <option value="Sister">Sister</option>
-                <option value="Grandfather">Grandfather</option>
-                <option value="Grandmother">Grandmother</option>
+                <option value="Grandfather">
+                  Grandfather
+                </option>
+                <option value="Grandmother">
+                  Grandmother
+                </option>
                 <option value="Aunt">Aunt</option>
                 <option value="Uncle">Uncle</option>
                 <option value="Cousin">Cousin</option>
-                <option value="Uncle">Wife</option>
-                <option value="Cousin">Husband</option>
                 <option value="Other">Other</option>
               </select>
 
-              {/* Email (Optional) */}
+              {/* Email */}
               <label
                 className="text-sm font-semibold block mb-1.5"
                 style={{ color: '#374151' }}
@@ -552,27 +661,36 @@ export default function ProfileSelection() {
                   type="email"
                   value={formData.email}
                   onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
+                    setFormData({
+                      ...formData,
+                      email: e.target.value,
+                    })
                   }
                   placeholder="john@example.com"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all"
                   style={{
-                    background: 'rgba(15,26,46,0.03)',
-                    border: '1px solid rgba(15,26,46,0.1)',
-                    color: '#1C1917'
+                    background:
+                      'rgba(15,26,46,0.03)',
+                    border:
+                      '1px solid rgba(15,26,46,0.1)',
+                    color: '#1C1917',
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.border = '1px solid #0D9488'
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(13,148,136,0.12)'
+                    e.currentTarget.style.border =
+                      '1px solid #0D9488'
+                    e.currentTarget.style.boxShadow =
+                      '0 0 0 3px rgba(13,148,136,0.12)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.border = '1px solid rgba(15,26,46,0.1)'
-                    e.currentTarget.style.boxShadow = 'none'
+                    e.currentTarget.style.border =
+                      '1px solid rgba(15,26,46,0.1)'
+                    e.currentTarget.style.boxShadow =
+                      'none'
                   }}
                 />
               </div>
 
-              {/* Phone (Optional) */}
+              {/* Phone */}
               <label
                 className="text-sm font-semibold block mb-1.5"
                 style={{ color: '#374151' }}
@@ -590,27 +708,36 @@ export default function ProfileSelection() {
                   type="tel"
                   value={formData.phone}
                   onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
+                    setFormData({
+                      ...formData,
+                      phone: e.target.value,
+                    })
                   }
                   placeholder="+91 98765 43210"
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all"
                   style={{
-                    background: 'rgba(15,26,46,0.03)',
-                    border: '1px solid rgba(15,26,46,0.1)',
-                    color: '#1C1917'
+                    background:
+                      'rgba(15,26,46,0.03)',
+                    border:
+                      '1px solid rgba(15,26,46,0.1)',
+                    color: '#1C1917',
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.border = '1px solid #0D9488'
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(13,148,136,0.12)'
+                    e.currentTarget.style.border =
+                      '1px solid #0D9488'
+                    e.currentTarget.style.boxShadow =
+                      '0 0 0 3px rgba(13,148,136,0.12)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.border = '1px solid rgba(15,26,46,0.1)'
-                    e.currentTarget.style.boxShadow = 'none'
+                    e.currentTarget.style.border =
+                      '1px solid rgba(15,26,46,0.1)'
+                    e.currentTarget.style.boxShadow =
+                      'none'
                   }}
                 />
               </div>
 
-              {/* Age (Optional) */}
+              {/* Age */}
               <label
                 className="text-sm font-semibold block mb-1.5"
                 style={{ color: '#374151' }}
@@ -624,22 +751,31 @@ export default function ProfileSelection() {
                 max="120"
                 value={formData.age}
                 onChange={(e) =>
-                  setFormData({ ...formData, age: e.target.value })
+                  setFormData({
+                    ...formData,
+                    age: e.target.value,
+                  })
                 }
                 placeholder="e.g., 35"
                 className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all mb-2"
                 style={{
-                  background: 'rgba(15,26,46,0.03)',
-                  border: '1px solid rgba(15,26,46,0.1)',
-                  color: '#1C1917'
+                  background:
+                    'rgba(15,26,46,0.03)',
+                  border:
+                    '1px solid rgba(15,26,46,0.1)',
+                  color: '#1C1917',
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.border = '1px solid #0D9488'
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(13,148,136,0.12)'
+                  e.currentTarget.style.border =
+                    '1px solid #0D9488'
+                  e.currentTarget.style.boxShadow =
+                    '0 0 0 3px rgba(13,148,136,0.12)'
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.border = '1px solid rgba(15,26,46,0.1)'
-                  e.currentTarget.style.boxShadow = 'none'
+                  e.currentTarget.style.border =
+                    '1px solid rgba(15,26,46,0.1)'
+                  e.currentTarget.style.boxShadow =
+                    'none'
                 }}
               />
 
@@ -660,12 +796,19 @@ export default function ProfileSelection() {
                   onClick={() => {
                     setShowModal(false)
                     setFormError('')
-                    setFormData({ name: '', relation: '', email: '', phone: '', age: '' })
+                    setFormData({
+                      name: '',
+                      relation: '',
+                      email: '',
+                      phone: '',
+                      age: '',
+                    })
                   }}
                   className="flex-1 px-4 py-3 rounded-xl font-semibold transition-all"
                   style={{
-                    background: 'rgba(15,26,46,0.08)',
-                    color: '#374151'
+                    background:
+                      'rgba(15,26,46,0.08)',
+                    color: '#374151',
                   }}
                 >
                   Cancel
@@ -676,10 +819,13 @@ export default function ProfileSelection() {
                   disabled={formLoading}
                   className="flex-1 px-4 py-3 rounded-xl text-white font-semibold transition-opacity disabled:opacity-60"
                   style={{
-                    background: 'linear-gradient(135deg, #0D9488, #D97706)'
+                    background:
+                      'linear-gradient(135deg, #0D9488, #D97706)',
                   }}
                 >
-                  {formLoading ? 'Adding...' : 'Add Member'}
+                  {formLoading
+                    ? 'Adding...'
+                    : 'Add Member'}
                 </button>
               </div>
             </form>

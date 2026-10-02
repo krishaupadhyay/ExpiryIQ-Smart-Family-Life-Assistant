@@ -3,8 +3,15 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
 const User = require('../models/user.model');
+
+const PendingRegistration = require(
+    '../models/pendingRegistration.model'
+);
 const generateOTP = require('../utils/otp');
-const { sendOTPEmail, sendResetPasswordEmail } = require('../config/mailer.js');
+const {
+    sendOTPEmail,
+    sendResetPasswordEmail
+} = require('../config/mailer.js');
 
 
 // ===============================
@@ -27,7 +34,6 @@ const createToken = (userId) => {
 // ===============================
 
 const setAuthCookie = (res, userId) => {
-
     const token = createToken(userId);
 
     res.cookie('token', token, {
@@ -44,58 +50,54 @@ const setAuthCookie = (res, userId) => {
 // ===============================
 
 const register = async (req, res) => {
-
     try {
-
         const { name, email, phone, password } = req.body;
-
 
         // ===============================
         // REQUIRED FIELDS
         // ===============================
 
         if (!name || !email || !phone || !password) {
-
             return res.status(400).json({
-                message: 'Name, email, phone and password are required.'
+                message:
+                    'Name, email, phone and password are required.'
             });
         }
-
 
         // ===============================
         // NORMALIZE EMAIL
         // ===============================
 
-        const normalizedEmail = email.toLowerCase().trim();
-
+        const normalizedEmail =
+            email.toLowerCase().trim();
 
         // ===============================
         // EMAIL VALIDATION
         // ===============================
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailRegex =
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         if (!emailRegex.test(normalizedEmail)) {
-
             return res.status(400).json({
-                message: 'Please enter a valid email address.'
+                message:
+                    'Please enter a valid email address.'
             });
         }
-
 
         // ===============================
         // PHONE VALIDATION
         // ===============================
 
-        const phoneRegex = /^[0-9+\-\s()]{7,15}$/;
+        const phoneRegex =
+            /^[0-9+\-\s()]{7,15}$/;
 
         if (!phoneRegex.test(phone.trim())) {
-
             return res.status(400).json({
-                message: 'Please enter a valid phone number.'
+                message:
+                    'Please enter a valid phone number.'
             });
         }
-
 
         // ===============================
         // PASSWORD VALIDATION
@@ -105,16 +107,14 @@ const register = async (req, res) => {
             /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
         if (!passwordRegex.test(password)) {
-
             return res.status(400).json({
                 message:
                     'Password must be at least 8 characters and contain one uppercase letter, one lowercase letter and one digit.'
             });
         }
 
-
         // ===============================
-        // CHECK DUPLICATE EMAIL
+        // CHECK EXISTING VERIFIED ACCOUNT
         // ===============================
 
         const existingUser = await User.findOne({
@@ -122,20 +122,26 @@ const register = async (req, res) => {
         });
 
         if (existingUser) {
-
             return res.status(409).json({
                 message:
                     'An account with this email already exists. Please use a different email address or login.'
             });
         }
 
+        // ===============================
+        // REMOVE OLD PENDING REGISTRATION
+        // ===============================
+
+        await PendingRegistration.deleteOne({
+            email: normalizedEmail
+        });
 
         // ===============================
         // HASH PASSWORD
         // ===============================
 
-        const hashedPassword = await bcrypt.hash(password, 12);
-
+        const hashedPassword =
+            await bcrypt.hash(password, 12);
 
         // ===============================
         // GENERATE OTP
@@ -146,61 +152,60 @@ const register = async (req, res) => {
         const otpExpiresAt =
             new Date(Date.now() + 5 * 60 * 1000);
 
-
         // ===============================
-        // CREATE OWNER ACCOUNT
+        // CREATE PENDING REGISTRATION
         // ===============================
 
-        const user = await User.create({
-
-            name: name.trim(),
-
-            email: normalizedEmail,
-
-            phone: phone.trim(),
-
-            password: hashedPassword,
-
-            emailOtp: otp,
-
-            otpExpiresAt: otpExpiresAt,
-
-            isEmailVerified: false,
-
-            familyMembers: [
-                {
-                    name: name.trim(),
-                    relation: 'Owner'
-                }
-            ]
-        });
-
+        const pendingRegistration =
+            await PendingRegistration.create({
+                name: name.trim(),
+                email: normalizedEmail,
+                phone: phone.trim(),
+                password: hashedPassword,
+                otp,
+                otpExpiresAt
+            });
 
         // ===============================
         // SEND OTP
         // ===============================
 
-        await sendOTPEmail(
-            normalizedEmail,
-            otp
-        );
+        try {
+            await sendOTPEmail(
+                normalizedEmail,
+                otp
+            );
+        } catch (mailError) {
 
+            // If email fails, remove pending registration
+            await PendingRegistration.deleteOne({
+                _id: pendingRegistration._id
+            });
 
+            console.error(
+                'Registration OTP email error:',
+                mailError
+            );
+
+            return res.status(500).json({
+                message:
+                    'Unable to send OTP. Please try again later.'
+            });
+        }
+
+        // ===============================
         // IMPORTANT:
-        // DO NOT CREATE JWT HERE
-
+        // REAL USER IS NOT CREATED YET
+        // ===============================
 
         return res.status(201).json({
-
             message:
-                'Account created. Please verify the OTP sent to your email.',
+                'OTP sent to your email. Please verify your account.',
 
             mfaRequired: true,
 
-            userId: user._id
-
+            userId: pendingRegistration._id
         });
-
 
     } catch (error) {
 
@@ -208,14 +213,6 @@ const register = async (req, res) => {
             'Register error:',
             error
         );
-
-        if (error.code === 11000) {
-
-            return res.status(409).json({
-                message:
-                    'An account with this email already exists.'
-            });
-        }
 
         return res.status(500).json({
             message:
@@ -230,14 +227,11 @@ const register = async (req, res) => {
 // ===============================
 
 const login = async (req, res) => {
-
     try {
-
         const { email, password } = req.body;
 
 
         if (!email || !password) {
-
             return res.status(400).json({
                 message:
                     'Email and password are required.'
@@ -259,7 +253,6 @@ const login = async (req, res) => {
 
 
         if (!user) {
-
             return res.status(401).json({
                 message:
                     'Incorrect email or password.'
@@ -275,7 +268,6 @@ const login = async (req, res) => {
             user.lockUntil &&
             user.lockUntil > new Date()
         ) {
-
             const remainingTime =
                 user.lockUntil.getTime() -
                 Date.now();
@@ -301,9 +293,7 @@ const login = async (req, res) => {
             user.lockUntil &&
             user.lockUntil <= new Date()
         ) {
-
             user.failedLoginAttempts = 0;
-
             user.lockUntil = null;
 
             await user.save();
@@ -326,12 +316,9 @@ const login = async (req, res) => {
         // ===============================
 
         if (!passwordMatch) {
-
             user.failedLoginAttempts += 1;
 
-
             if (user.failedLoginAttempts >= 5) {
-
                 user.lockUntil =
                     new Date(
                         Date.now() +
@@ -346,16 +333,12 @@ const login = async (req, res) => {
                 });
             }
 
-
             await user.save();
-
 
             const remainingAttempts =
                 5 - user.failedLoginAttempts;
 
-
             return res.status(401).json({
-
                 message:
                     `Incorrect email or password. ${remainingAttempts} attempt(s) remaining.`
             });
@@ -367,7 +350,6 @@ const login = async (req, res) => {
         // ===============================
 
         user.failedLoginAttempts = 0;
-
         user.lockUntil = null;
 
 
@@ -404,19 +386,16 @@ const login = async (req, res) => {
 
 
         return res.json({
-
             message:
                 'Password verified. OTP sent to your email.',
 
             mfaRequired: true,
 
             userId: user._id
-
         });
 
 
     } catch (error) {
-
         console.error(
             'Login error:',
             error
@@ -435,52 +414,170 @@ const login = async (req, res) => {
 // ===============================
 
 const verifyMFA = async (req, res) => {
-
     try {
-
         const { userId, otp } = req.body;
 
-
         if (!userId || !otp) {
-
             return res.status(400).json({
                 message:
                     'User ID and OTP are required.'
             });
         }
 
-
         // ===============================
-        // FIND USER
+        // FIRST: CHECK PENDING REGISTRATION
         // ===============================
 
-        const user = await User.findById(userId);
+        const pendingRegistration =
+            await PendingRegistration.findById(userId);
 
+        // ==========================================
+        // SIGNUP OTP VERIFICATION
+        // ==========================================
+
+        if (pendingRegistration) {
+
+            // ===============================
+            // CHECK OTP EXPIRY
+            // ===============================
+
+            if (
+                !pendingRegistration.otpExpiresAt ||
+                pendingRegistration.otpExpiresAt < new Date()
+            ) {
+
+                await PendingRegistration.deleteOne({
+                    _id: pendingRegistration._id
+                });
+
+                return res.status(400).json({
+                    message:
+                        'OTP has expired. Please register again.'
+                });
+            }
+
+            // ===============================
+            // CHECK OTP VALUE
+            // ===============================
+
+            if (
+                pendingRegistration.otp !== otp
+            ) {
+                return res.status(401).json({
+                    message:
+                        'Invalid OTP. Please try again.'
+                });
+            }
+
+            // ===============================
+            // OTP SUCCESS
+            // ===============================
+
+            // Check again in case account was
+            // created while OTP was pending
+            const existingUser =
+                await User.findOne({
+                    email: pendingRegistration.email
+                });
+
+            if (existingUser) {
+
+                await PendingRegistration.deleteOne({
+                    _id: pendingRegistration._id
+                });
+
+                return res.status(409).json({
+                    message:
+                        'An account with this email already exists. Please login.'
+                });
+            }
+
+            // ===============================
+            // CREATE REAL USER NOW
+            // ===============================
+
+            const user = await User.create({
+                name: pendingRegistration.name,
+
+                email: pendingRegistration.email,
+
+                phone: pendingRegistration.phone,
+
+                password: pendingRegistration.password,
+
+                emailOtp: null,
+
+                otpExpiresAt: null,
+
+                isEmailVerified: true,
+
+                isPhoneVerified: false,
+
+                familyMembers: [
+                    {
+                        name: pendingRegistration.name,
+                        relation: 'Owner'
+                    }
+                ]
+            });
+
+            // ===============================
+            // DELETE PENDING REGISTRATION
+            // ===============================
+
+            await PendingRegistration.deleteOne({
+                _id: pendingRegistration._id
+            });
+
+            // ===============================
+            // CREATE JWT
+            // ===============================
+
+            setAuthCookie(
+                res,
+                user._id
+            );
+
+            return res.json({
+                message:
+                    'Account verified and created successfully.',
+
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phone
+                }
+            });
+        }
+
+        // ==========================================
+        // EXISTING USER LOGIN MFA
+        // ==========================================
+
+        const user =
+            await User.findById(userId);
 
         if (!user) {
-
             return res.status(404).json({
                 message:
                     'User not found.'
             });
         }
 
-
         // ===============================
         // CHECK OTP
         // ===============================
 
         if (!user.emailOtp) {
-
             return res.status(400).json({
                 message:
                     'No OTP is active. Please request a new OTP.'
             });
         }
 
-
         // ===============================
-        // CHECK OTP EXPIRY
+        // CHECK EXPIRY
         // ===============================
 
         if (
@@ -489,7 +586,6 @@ const verifyMFA = async (req, res) => {
         ) {
 
             user.emailOtp = null;
-
             user.otpExpiresAt = null;
 
             await user.save();
@@ -500,35 +596,28 @@ const verifyMFA = async (req, res) => {
             });
         }
 
-
         // ===============================
-        // CHECK OTP VALUE
+        // CHECK OTP
         // ===============================
 
         if (user.emailOtp !== otp) {
-
             return res.status(401).json({
                 message:
                     'Invalid OTP. Please try again.'
             });
         }
 
-
         // ===============================
-        // OTP SUCCESS
+        // LOGIN OTP SUCCESS
         // ===============================
 
         user.emailOtp = null;
-
         user.otpExpiresAt = null;
-
-        user.isEmailVerified = true;
 
         await user.save();
 
-
         // ===============================
-        // NOW CREATE JWT
+        // CREATE JWT
         // ===============================
 
         setAuthCookie(
@@ -536,9 +625,7 @@ const verifyMFA = async (req, res) => {
             user._id
         );
 
-
         return res.json({
-
             message:
                 'MFA verification successful.',
 
@@ -549,7 +636,6 @@ const verifyMFA = async (req, res) => {
                 phone: user.phone
             }
         });
-
 
     } catch (error) {
 
@@ -571,69 +657,94 @@ const verifyMFA = async (req, res) => {
 // ===============================
 
 const resendMFA = async (req, res) => {
-
     try {
-
         const { userId } = req.body;
 
-
         if (!userId) {
-
             return res.status(400).json({
                 message:
                     'User ID is required.'
             });
         }
 
+        // ===============================
+        // CHECK PENDING REGISTRATION FIRST
+        // ===============================
+
+        const pendingRegistration =
+            await PendingRegistration.findById(userId);
+
+        if (pendingRegistration) {
+
+            const otp = generateOTP();
+
+            pendingRegistration.otp = otp;
+
+            pendingRegistration.otpExpiresAt =
+                new Date(
+                    Date.now() + 5 * 60 * 1000
+                );
+
+            await pendingRegistration.save();
+
+            try {
+                await sendOTPEmail(
+                    pendingRegistration.email,
+                    otp
+                );
+            } catch (mailError) {
+
+                console.error(
+                    'Resend registration OTP email error:',
+                    mailError
+                );
+
+                return res.status(500).json({
+                    message:
+                        'Unable to send OTP. Please try again later.'
+                });
+            }
+
+            return res.json({
+                message:
+                    'A new OTP has been sent to your email.'
+            });
+        }
+
+        // ===============================
+        // EXISTING USER LOGIN MFA
+        // ===============================
 
         const user =
             await User.findById(userId);
 
-
         if (!user) {
-
             return res.status(404).json({
                 message:
                     'User not found.'
             });
         }
 
-
-        // ===============================
-        // GENERATE NEW OTP
-        // ===============================
-
         const otp = generateOTP();
-
 
         user.emailOtp = otp;
 
         user.otpExpiresAt =
             new Date(
-                Date.now() +
-                5 * 60 * 1000
+                Date.now() + 5 * 60 * 1000
             );
 
-
         await user.save();
-
-
-        // ===============================
-        // SEND EMAIL
-        // ===============================
 
         await sendOTPEmail(
             user.email,
             otp
         );
 
-
         return res.json({
-
             message:
                 'A new OTP has been sent to your email.'
         });
-
 
     } catch (error) {
 
@@ -655,27 +766,28 @@ const resendMFA = async (req, res) => {
 // ===============================
 
 const getMe = async (req, res) => {
-
     try {
-
         const user =
             await User.findById(req.userId)
-              .select('-password -emailOtp -otpExpiresAt -resetPasswordToken -resetPasswordExpires');
+                .select(
+                    '-password -emailOtp -otpExpiresAt -resetPasswordToken -resetPasswordExpires'
+                );
+
 
         if (!user) {
-
             return res.status(404).json({
                 message:
                     'User not found.'
             });
         }
 
+
         return res.json({
             user
         });
 
-    } catch (error) {
 
+    } catch (error) {
         console.error(
             'GetMe error:',
             error
@@ -694,12 +806,12 @@ const getMe = async (req, res) => {
 // ===============================
 
 const logout = async (req, res) => {
-
     res.clearCookie('token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax'
     });
+
 
     return res.json({
         message:
@@ -713,9 +825,7 @@ const logout = async (req, res) => {
 // ===============================
 
 const addFamilyMember = async (req, res) => {
-
     try {
-
         const {
             name,
             relation,
@@ -726,7 +836,6 @@ const addFamilyMember = async (req, res) => {
 
 
         if (!name) {
-
             return res.status(400).json({
                 message:
                     'Family member name is required.'
@@ -739,7 +848,6 @@ const addFamilyMember = async (req, res) => {
 
 
         if (!user) {
-
             return res.status(404).json({
                 message:
                     'User not found.'
@@ -748,7 +856,6 @@ const addFamilyMember = async (req, res) => {
 
 
         user.familyMembers.push({
-
             name: name.trim(),
 
             relation:
@@ -773,7 +880,6 @@ const addFamilyMember = async (req, res) => {
 
 
         return res.status(201).json({
-
             message:
                 'Family member added successfully.',
 
@@ -783,7 +889,6 @@ const addFamilyMember = async (req, res) => {
 
 
     } catch (error) {
-
         console.error(
             'Add family member error:',
             error
@@ -802,16 +907,13 @@ const addFamilyMember = async (req, res) => {
 // ===============================
 
 const getFamilyMembers = async (req, res) => {
-
     try {
-
         const user =
             await User.findById(req.userId)
                 .select('familyMembers');
 
 
         if (!user) {
-
             return res.status(404).json({
                 message:
                     'User not found.'
@@ -826,7 +928,6 @@ const getFamilyMembers = async (req, res) => {
 
 
     } catch (error) {
-
         console.error(
             'Get family members error:',
             error
@@ -839,62 +940,107 @@ const getFamilyMembers = async (req, res) => {
     }
 };
 
+
 // ===============================
 // FORGOT PASSWORD
 // ===============================
 
 const forgotPassword = async (req, res) => {
-    // Same response whether or not the email exists (prevents account enumeration)
+    // Same response whether or not the email exists
+    // (prevents account enumeration)
+
     const genericResponse = {
-        message: 'If an account with that email exists, a reset link has been sent.'
+        message:
+            'If an account with that email exists, a reset link has been sent.'
     };
 
     try {
         const { email } = req.body;
 
+
         if (!email) {
-            return res.status(400).json({ message: 'Email is required.' });
+            return res.status(400).json({
+                message:
+                    'Email is required.'
+            });
         }
 
+
         const user = await User.findOne({
-            email: email.toLowerCase().trim()
+            email:
+                email.toLowerCase().trim()
         });
+
 
         if (!user) {
             return res.json(genericResponse);
         }
 
-        // Raw token goes in the email, only the hash is stored
-        const rawToken = crypto.randomBytes(32).toString('hex');
-        const hashedToken = crypto
-            .createHash('sha256')
-            .update(rawToken)
-            .digest('hex');
+
+        // Raw token goes in the email,
+        // only the hash is stored
+
+        const rawToken =
+            crypto.randomBytes(32).toString('hex');
+
+        const hashedToken =
+            crypto
+                .createHash('sha256')
+                .update(rawToken)
+                .digest('hex');
+
 
         user.resetPasswordToken = hashedToken;
-        user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+        user.resetPasswordExpires =
+            new Date(
+                Date.now() +
+                15 * 60 * 1000
+            );
+
+
         await user.save();
 
-        const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
+
+        const resetUrl =
+            `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
+
 
         try {
-            await sendResetPasswordEmail(user.email, resetUrl);
+            await sendResetPasswordEmail(
+                user.email,
+                resetUrl
+            );
         } catch (mailError) {
             user.resetPasswordToken = null;
             user.resetPasswordExpires = null;
+
             await user.save();
-            console.error('Reset email error:', mailError);
+
+            console.error(
+                'Reset email error:',
+                mailError
+            );
+
             return res.status(500).json({
-                message: 'Unable to send reset email. Please try again later.'
+                message:
+                    'Unable to send reset email. Please try again later.'
             });
         }
 
+
         return res.json(genericResponse);
 
+
     } catch (error) {
-        console.error('Forgot password error:', error);
+        console.error(
+            'Forgot password error:',
+            error
+        );
+
         return res.status(500).json({
-            message: 'Server error while processing request.'
+            message:
+                'Server error while processing request.'
         });
     }
 };
@@ -909,13 +1055,18 @@ const resetPassword = async (req, res) => {
         const { token } = req.params;
         const { password } = req.body;
 
+
         if (!token || !password) {
             return res.status(400).json({
-                message: 'Token and new password are required.'
+                message:
+                    'Token and new password are required.'
             });
         }
 
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+        const passwordRegex =
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
 
         if (!passwordRegex.test(password)) {
             return res.status(400).json({
@@ -924,25 +1075,37 @@ const resetPassword = async (req, res) => {
             });
         }
 
-        const hashedToken = crypto
-            .createHash('sha256')
-            .update(token)
-            .digest('hex');
+
+        const hashedToken =
+            crypto
+                .createHash('sha256')
+                .update(token)
+                .digest('hex');
+
 
         const user = await User.findOne({
             resetPasswordToken: hashedToken,
-            resetPasswordExpires: { $gt: new Date() }
+            resetPasswordExpires: {
+                $gt: new Date()
+            }
         });
+
 
         if (!user) {
             return res.status(400).json({
-                message: 'Reset link is invalid or has expired.'
+                message:
+                    'Reset link is invalid or has expired.'
             });
         }
 
-        user.password = await bcrypt.hash(password, 12);
 
-        // Invalidate the token and any pending OTP, and unlock the account
+        user.password =
+            await bcrypt.hash(password, 12);
+
+
+        // Invalidate the token and any pending OTP,
+        // and unlock the account
+
         user.resetPasswordToken = null;
         user.resetPasswordExpires = null;
         user.emailOtp = null;
@@ -950,16 +1113,25 @@ const resetPassword = async (req, res) => {
         user.failedLoginAttempts = 0;
         user.lockUntil = null;
 
+
         await user.save();
 
+
         return res.json({
-            message: 'Password reset successful. You can now log in.'
+            message:
+                'Password reset successful. You can now log in.'
         });
 
+
     } catch (error) {
-        console.error('Reset password error:', error);
+        console.error(
+            'Reset password error:',
+            error
+        );
+
         return res.status(500).json({
-            message: 'Server error while resetting password.'
+            message:
+                'Server error while resetting password.'
         });
     }
 };
@@ -970,7 +1142,6 @@ const resetPassword = async (req, res) => {
 // ===============================
 
 module.exports = {
-
     register,
     login,
     verifyMFA,
@@ -981,5 +1152,4 @@ module.exports = {
     getFamilyMembers,
     forgotPassword,
     resetPassword
-
 };

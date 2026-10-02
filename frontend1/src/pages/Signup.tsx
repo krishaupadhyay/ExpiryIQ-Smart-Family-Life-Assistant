@@ -8,7 +8,7 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Phone
+  Phone,
 } from 'lucide-react'
 import { apiRequest } from '../services/api'
 
@@ -35,29 +35,35 @@ export default function Signup() {
     e.preventDefault()
     setError('')
 
-    // Validation
+    // Required field validation
     if (!name || !email || !phone || !password || !confirm) {
       setError('Please fill in all fields.')
       return
     }
 
+    // Name validation
     if (name.trim().length < 2) {
       setError('Name must be at least 2 characters.')
       return
     }
 
+    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
     if (!emailRegex.test(email.trim())) {
       setError('Please enter a valid email address.')
       return
     }
 
+    // Phone validation
     const phoneRegex = /^[0-9+\-\s()]{7,15}$/
+
     if (!phoneRegex.test(phone.trim())) {
       setError('Please enter a valid phone number.')
       return
     }
 
+    // Password validation
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/
 
     if (!passwordRegex.test(password)) {
@@ -67,6 +73,7 @@ export default function Signup() {
       return
     }
 
+    // Confirm password
     if (password !== confirm) {
       setError('Passwords do not match.')
       return
@@ -81,13 +88,13 @@ export default function Signup() {
           name: name.trim(),
           email: email.trim(),
           phone: phone.trim(),
-          password
-        })
+          password,
+        }),
       })
 
       console.log('Registration response:', data)
 
-      // Backend sends OTP and returns userId
+      // Backend requires MFA verification
       if (data.mfaRequired) {
         setUserId(data.userId)
         setOtpStep(true)
@@ -96,7 +103,6 @@ export default function Signup() {
         // Fallback if MFA is not enabled
         navigate('/login', { replace: true })
       }
-
     } catch (err) {
       setError(
         err instanceof Error
@@ -124,8 +130,8 @@ export default function Signup() {
         method: 'POST',
         body: JSON.stringify({
           userId,
-          otp
-        })
+          otp,
+        }),
       })
 
       console.log('MFA verification successful:', data)
@@ -134,7 +140,6 @@ export default function Signup() {
 
       // JWT is created by backend after successful MFA
       navigate('/profiles', { replace: true })
-
     } catch (err) {
       setError(
         err instanceof Error
@@ -154,12 +159,11 @@ export default function Signup() {
       const data = await apiRequest('/auth/resend-mfa', {
         method: 'POST',
         body: JSON.stringify({
-          userId
-        })
+          userId,
+        }),
       })
 
       console.log('OTP resent:', data)
-
     } catch (err) {
       setError(
         err instanceof Error
@@ -172,14 +176,19 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ background: '#FFFDF7' }}>
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-10"
+      style={{ background: '#FFFDF7' }}
+    >
       <div className="w-full max-w-md">
-
-        <Link to="/" className="flex items-center justify-center gap-2.5 mb-8">
+        <Link
+          to="/"
+          className="flex items-center justify-center gap-2.5 mb-8"
+        >
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center shadow"
             style={{
-              background: 'linear-gradient(135deg, #0D9488, #D97706)'
+              background: 'linear-gradient(135deg, #0D9488, #D97706)',
             }}
           >
             <Bot className="w-5 h-5 text-white" />
@@ -189,7 +198,7 @@ export default function Signup() {
             className="font-bold text-xl"
             style={{
               fontFamily: "'Playfair Display', Georgia, serif",
-              color: '#0F1A2E'
+              color: '#0F1A2E',
             }}
           >
             ExpiryIQ
@@ -201,18 +210,16 @@ export default function Signup() {
           style={{
             background: 'white',
             border: '1px solid rgba(15,26,46,0.08)',
-            boxShadow: '0 4px 24px rgba(15,26,46,0.06)'
+            boxShadow: '0 4px 24px rgba(15,26,46,0.06)',
           }}
         >
-
           {!otpStep ? (
-
             <>
               <h1
                 className="text-2xl font-bold mb-1"
                 style={{
                   fontFamily: "'Playfair Display', Georgia, serif",
-                  color: '#0F1A2E'
+                  color: '#0F1A2E',
                 }}
               >
                 Create your family account
@@ -226,7 +233,6 @@ export default function Signup() {
               </p>
 
               <form onSubmit={handleSubmit}>
-
                 {/* Name */}
                 <label
                   className="text-sm font-semibold block mb-1.5"
@@ -251,7 +257,7 @@ export default function Signup() {
                     style={{
                       background: 'rgba(15,26,46,0.03)',
                       border: '1px solid rgba(15,26,46,0.1)',
-                      color: '#1C1917'
+                      color: '#1C1917',
                     }}
                     onFocus={e => {
                       e.currentTarget.style.border = '1px solid #0D9488'
@@ -290,7 +296,7 @@ export default function Signup() {
                     style={{
                       background: 'rgba(15,26,46,0.03)',
                       border: '1px solid rgba(15,26,46,0.1)',
-                      color: '#1C1917'
+                      color: '#1C1917',
                     }}
                     onFocus={e => {
                       e.currentTarget.style.border = '1px solid #0D9488'
@@ -329,7 +335,7 @@ export default function Signup() {
                     style={{
                       background: 'rgba(15,26,46,0.03)',
                       border: '1px solid rgba(15,26,46,0.1)',
-                      color: '#1C1917'
+                      color: '#1C1917',
                     }}
                     onFocus={e => {
                       e.currentTarget.style.border = '1px solid #0D9488'
@@ -361,7 +367,7 @@ export default function Signup() {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    minLength={7}
+                    minLength={8}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="8+ chars, uppercase, lowercase & digit"
@@ -369,7 +375,7 @@ export default function Signup() {
                     style={{
                       background: 'rgba(15,26,46,0.03)',
                       border: '1px solid rgba(15,26,46,0.1)',
-                      color: '#1C1917'
+                      color: '#1C1917',
                     }}
                     onFocus={e => {
                       e.currentTarget.style.border = '1px solid #0D9488'
@@ -389,10 +395,11 @@ export default function Signup() {
                     className="absolute right-3.5 top-1/2 -translate-y-1/2"
                     style={{ color: '#9CA3AF' }}
                   >
-                    {showPassword
-                      ? <EyeOff className="w-4 h-4" />
-                      : <Eye className="w-4 h-4" />
-                    }
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
 
@@ -420,7 +427,7 @@ export default function Signup() {
                     style={{
                       background: 'rgba(15,26,46,0.03)',
                       border: '1px solid rgba(15,26,46,0.1)',
-                      color: '#1C1917'
+                      color: '#1C1917',
                     }}
                     onFocus={e => {
                       e.currentTarget.style.border = '1px solid #0D9488'
@@ -450,7 +457,7 @@ export default function Signup() {
                   className="w-full flex items-center justify-center gap-2 text-white font-semibold py-3 rounded-xl mt-4 transition-opacity disabled:opacity-60"
                   style={{
                     background:
-                      'linear-gradient(135deg, #0D9488, #D97706)'
+                      'linear-gradient(135deg, #0D9488, #D97706)',
                   }}
                 >
                   {loading ? 'Creating account…' : 'Create Account'}
@@ -459,7 +466,6 @@ export default function Signup() {
                     <ArrowRight className="w-4 h-4" />
                   )}
                 </button>
-
               </form>
 
               <p
@@ -477,17 +483,14 @@ export default function Signup() {
                 </Link>
               </p>
             </>
-
           ) : (
-
-            /* ================= MFA OTP ================= */
-
+            /* MFA OTP */
             <>
               <h1
                 className="text-2xl font-bold mb-1"
                 style={{
                   fontFamily: "'Playfair Display', Georgia, serif",
-                  color: '#0F1A2E'
+                  color: '#0F1A2E',
                 }}
               >
                 Verify your account
@@ -495,14 +498,12 @@ export default function Signup() {
 
               <p
                 className="text-sm mb-7"
-                
                 style={{ color: '#6B7280' }}
               >
-               We sent a 6-digit OTP to your email address.
+                We sent a 6-digit OTP to your email address.
               </p>
 
               <form onSubmit={handleVerifyOTP}>
-
                 <label
                   className="text-sm font-semibold block mb-1.5"
                   style={{ color: '#374151' }}
@@ -529,7 +530,7 @@ export default function Signup() {
                     style={{
                       background: 'rgba(15,26,46,0.03)',
                       border: '1px solid rgba(15,26,46,0.1)',
-                      color: '#1C1917'
+                      color: '#1C1917',
                     }}
                     autoFocus
                   />
@@ -550,7 +551,7 @@ export default function Signup() {
                   className="w-full flex items-center justify-center gap-2 text-white font-semibold py-3 rounded-xl mt-4 transition-opacity disabled:opacity-60"
                   style={{
                     background:
-                      'linear-gradient(135deg, #0D9488, #D97706)'
+                      'linear-gradient(135deg, #0D9488, #D97706)',
                   }}
                 >
                   {loading ? 'Verifying…' : 'Verify OTP'}
@@ -559,7 +560,6 @@ export default function Signup() {
                     <ArrowRight className="w-4 h-4" />
                   )}
                 </button>
-
               </form>
 
               <p
@@ -579,9 +579,7 @@ export default function Signup() {
                 </button>
               </p>
             </>
-
           )}
-
         </div>
       </div>
     </div>
