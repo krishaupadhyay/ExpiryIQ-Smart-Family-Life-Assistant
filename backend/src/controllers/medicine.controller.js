@@ -143,7 +143,8 @@ const updateMedicine = async (req, res) => {
       alertTime,
       total,
       remaining,
-      expiry
+      expiry,
+      mfgDate
     } = req.body;
 
     // If reassigning to a different family member, verify ownership again
@@ -171,6 +172,7 @@ const updateMedicine = async (req, res) => {
     if (total !== undefined) medicine.total = Number(total);
     if (remaining !== undefined) medicine.remaining = Number(remaining);
     if (expiry !== undefined) medicine.expiry = new Date(expiry);
+    if (mfgDate !== undefined) medicine.mfgDate = mfgDate ? new Date(mfgDate) : null;
 
     await medicine.save();
 

@@ -58,6 +58,14 @@ const updatePolicy = async (req, res) => {
     const policy = await Policy.findOne({ _id: req.params.id, userId: req.userId });
     if (!policy) return res.status(404).json({ message: 'Policy not found.' });
 
+    // If reassigning to a different family member, verify ownership again
+    if (req.body.familyMemberId && req.body.familyMemberId !== String(policy.familyMemberId)) {
+      const member = await getOwnedFamilyMember(req.userId, req.body.familyMemberId);
+      if (!member) return res.status(404).json({ message: 'That family member was not found on your account.' });
+      policy.familyMemberId = member._id;
+      policy.memberName = member.name;
+    }
+
     const fields = ['name', 'type', 'insurer', 'policyNo', 'sumAssured', 'contact'];
     fields.forEach(f => { if (req.body[f] !== undefined) policy[f] = req.body[f]; });
     if (req.body.premium !== undefined) policy.premium = Number(req.body.premium);
